@@ -34,6 +34,9 @@ typedef struct {
 
 tab_simbolos_t *inicializa_ts();
 void destroi_ts(tab_simbolos_t *ts);
+
+void imprime_ts(tab_simbolos_t *ts);
+
 simbolo_t *insere_ts(tab_simbolos_t *ts, char *nome, categorias_simb cat, unsigned int nivel_lexico);
 simbolo_t *busca_ts(tab_simbolos_t *ts, char *nome, categorias_simb cat, unsigned int nivel_lexico);
 
