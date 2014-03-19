@@ -1,0 +1,8 @@
+*.o
+compilador
+compilador.output
+compilador.tab.c
+compilador.tab.h
+lex.yy.c
+MEPA
+mepa
