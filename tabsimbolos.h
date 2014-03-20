@@ -1,16 +1,17 @@
 #ifndef _TABSIMBOLOS_H_
 #define _TABSIMBOLOS_H_
 
-#include "compilador.h"
-
-#define TS_CHUNK_SIZE 2
+#include "defs.h"
 
 typedef enum {
-    CAT_VS
+    CAT_VS,
+    CAT_PROC
 } categorias_simb;
 
 typedef enum {
-    TIPO_INTEGER
+    TIPO_INDEFINIDO,
+    TIPO_INTEGER,
+    TIPO_REAL
 } tipos_var;
 
 typedef union {
@@ -35,6 +36,9 @@ typedef struct {
 tab_simbolos_t *inicializa_ts();
 void destroi_ts(tab_simbolos_t *ts);
 simbolo_t *insere_ts(tab_simbolos_t *ts, char *nome, categorias_simb cat, unsigned int nivel_lexico);
+int define_tipo_ts(tab_simbolos_t *ts, char *token_tipo);
 simbolo_t *busca_ts(tab_simbolos_t *ts, char *nome, categorias_simb cat, unsigned int nivel_lexico);
+unsigned int remove_nivel_ts(tab_simbolos_t *ts, unsigned int nivel_lexico);
+
 
 #endif
