@@ -4,67 +4,32 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include "defs.h"
 #include "compilador.h"
 #include "tabsimbolos.h"
-
-int num_vars;
-int nivel_lexico = 0;
-
-FILE *mepa_fp;
-
-tab_simbolos_t *ts;
-
-void geraCodigo(const char* label, const char* format, ...) {
-    va_list args;
-    va_start(args, format);
-
-    if (label) {
-        fprintf(mepa_fp, "%s: ", label);
-    }
-    else {
-        fprintf(mepa_fp, "    ");
-    }
-
-    vfprintf(mepa_fp, format, args);
-    fprintf(mepa_fp, "\n");
-
-    va_end(args);
-}
-
-int imprimeErro(const char* erro) {
-    fprintf(stderr, "Erro na linha %d - %s\n", nl, erro);
-    exit(-1);
-}
-
+#include "utils.h"
 %}
+
+%define parse.error verbose
 
 %token PROGRAM ABRE_PARENTESES FECHA_PARENTESES
 %token VIRGULA PONTO_E_VIRGULA DOIS_PONTOS PONTO
 %token T_BEGIN T_END VAR IDENT ATRIBUICAO
+%token PROCEDURE
 
 %%
 
-programa:       { geraCodigo(NULL, "INPP"); }
+programa:       { geraCodigo(out, NULL, "INPP"); }
                 PROGRAM IDENT
                 ABRE_PARENTESES lista_idents FECHA_PARENTESES PONTO_E_VIRGULA
                 bloco PONTO
-                {
-                    /*int i, dmem_count = 0;
-                    for (i=(ts_it-1); i>=0; i--) {
-                        if (ts[ts_it].params.nivel_lexico < nivel_lexico)
-                            break;
+                { geraCodigo(out, NULL, "PARA"); };
 
-                        dmem_count++;
-                    }
-
-                    if (dmem_count > 0) {
-                        geraCodigo(NULL, "DMEM %d", dmem_count);
-                    }*/
-
-                    geraCodigo(NULL, "PARA");
-                };
+lista_idents:   lista_idents VIRGULA IDENT |
+                IDENT;
 
 bloco:          parte_declara_vars
+                parte_declara_procedures
                 comando_composto;
 
 parte_declara_vars: VAR declara_vars | ;
@@ -73,27 +38,49 @@ declara_vars:   declara_vars declara_var |
                 declara_var;
 
 declara_var:    { num_vars = 0; }
-                lista_id_var DOIS_PONTOS tipo PONTO_E_VIRGULA
-                { geraCodigo(NULL, "AMEM %d", num_vars); };
+                lista_id_var DOIS_PONTOS tipo {
+                    if (define_tipo_ts(ts, token.nome) != 0) {
+                        yyerror("'%s' não é tipo de váriavel válido", token.nome);
+                        YYERROR;
+                    }
+                }
+                PONTO_E_VIRGULA {
+                    geraCodigo(out, NULL, "AMEM %d", num_vars);
+                };
 
 lista_id_var:   lista_id_var VIRGULA var |
                 var;
 
 var:            IDENT {
-                    insere_ts(ts, token, CAT_VS, nivel_lexico);
+                    insere_ts(ts, token.nome, CAT_VS, nivel_lexico);
                     num_vars++;
                 };
 
-lista_idents:   lista_idents VIRGULA IDENT |
-                IDENT;
-
 tipo:           IDENT;
 
-comando_composto: T_BEGIN comandos T_END;
+parte_declara_procedures: procedure PONTO_E_VIRGULA parte_declara_procedures | ;
 
-comandos:       comandos PONTO_E_VIRGULA comando | comando;
+procedure:      PROCEDURE IDENT {
+                    insere_ts(ts, token.nome, CAT_PROC, nivel_lexico);
+                } PONTO_E_VIRGULA {
+                    nivel_lexico++;
+                } bloco;
 
-comando:        IDENT;
+comando_composto: T_BEGIN comandos T_END {
+                    #ifdef DEBUG
+                        imprime_ts(ts);
+                    #endif
+
+                    unsigned int removidos = remove_nivel_ts(ts, nivel_lexico);
+
+                    if (removidos > 0) {
+                        geraCodigo(out, NULL, "DMEM %d", removidos);
+                    }
+
+                    nivel_lexico--;
+                };
+
+comandos:       ;
 
 %%
 
@@ -103,37 +90,31 @@ main(int argc, char* argv[]) {
     extern FILE *yyin;
 
     if (argc != 2) {
-        printf("Usage:\n\tcompilador FILE\n\n");
+        printf("usage:\n\tcompilador FILE\n\n");
         exit(-1);
     }
 
     yyin = fopen(argv[1], "r");
     if (yyin == NULL) {
-        printf("Error: cannot open file %s.\n", argv[1]);
+        printf("error: cannot open file %s.\n", argv[1]);
         exit(-2);
     }
 
-    mepa_fp = fopen("MEPA", "w");
-    if (mepa_fp == NULL) {
-        printf("Error: cannot open MEPA file for writing.\n");
+    out = fopen("MEPA", "w");
+    if (out == NULL) {
+        printf("error: cannot open MEPA file for output.\n");
         exit(-3);
     }
 
+    nivel_lexico = 0;
     ts = inicializa_ts();
-    nl = 1;
 
     err = yyparse();
 
-    imprime_ts(ts);
     destroi_ts(ts);
 
     fclose(yyin);
-    fclose(mepa_fp);
+    fclose(out);
 
-    if (err != 0) {
-        printf("Erro de sintaxe na linha %d!\n", nl);
-        exit(err);
-    }
-
-    exit(0);
+    exit(err);
 }

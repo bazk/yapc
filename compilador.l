@@ -1,16 +1,21 @@
 %{
-#include<stdio.h>
-#include<string.h>
-
-#include "compilador.h"
+#include <stdio.h>
+#include <string.h>
+#include "defs.h"
 #include "compilador.tab.h"
+#include "compilador.h"
 
-#ifdef DEBUG
-     #define IMPRIME(STR) printf("%02d %s    # %s \n", nl, STR, token);
-#else
-     #define IMPRIME(STR) {};
-#endif
+int yycolumn = 1;
+
+#define YY_USER_ACTION \
+     token.nome = yytext; \
+     token.linha = yylineno; \
+     token.coluna = yycolumn; \
+     token.tam = yycolumn + yyleng - 1; \
+     yycolumn += yyleng;
 %}
+
+%option yylineno
 
 pulo_linha [\n]
 
@@ -24,94 +29,36 @@ comentario "(*".*"*)"
 
 %%
 
-{pulo_linha} { nl++; }
+{pulo_linha} { yycolumn = 1; }
 
 {descarte}
 
 {comentario}
 
-program {
-     simbolo = simb_program;
-     strncpy(token, yytext, TAM_TOKEN);
-     IMPRIME("program ");
-     return PROGRAM;
-}
+program { return PROGRAM; }
 
-var {
-     simbolo = simb_var;
-     strncpy (token, yytext, TAM_TOKEN);
-     IMPRIME("var  ");
-     return VAR;
-}
+var { return VAR; }
 
-begin {
-     simbolo = simb_begin;
-     strncpy (token, yytext, TAM_TOKEN);
-     IMPRIME("begin ");
-     return T_BEGIN;
-}
+procedure { return PROCEDURE; }
 
-end {
-     simbolo = simb_end;
-     strncpy (token, yytext, TAM_TOKEN);
-     IMPRIME("end  ");
-     return T_END;
-}
+begin { return T_BEGIN; }
 
-:= {
-     simbolo = simb_atribuicao;
-     strncpy (token, yytext, TAM_TOKEN);
-     IMPRIME(" atribuicao  ");
-     return ATRIBUICAO;
-}
+end { return T_END; }
 
-\; {
-     simbolo = simb_ponto_e_virgula;
-     strncpy (token, yytext, TAM_TOKEN);
-     IMPRIME(" pt_virgula  ");
-     return PONTO_E_VIRGULA;
-}
+:= { return ATRIBUICAO; }
 
-\: {
-     simbolo = simb_dois_pontos;
-     strncpy (token, yytext, TAM_TOKEN);
-     IMPRIME(" dois pontos ");
-     return DOIS_PONTOS;
-}
+\; { return PONTO_E_VIRGULA; }
 
-\, { simbolo = simb_virgula;
-     strncpy (token, yytext, TAM_TOKEN);
-     IMPRIME(" virgula  ");
-     return VIRGULA;
-}
+\: { return DOIS_PONTOS; }
 
+\, { return VIRGULA; }
 
-\. {
-     simbolo = simb_ponto;
-     strncpy (token, yytext, TAM_TOKEN);
-     IMPRIME(" ponto  ");
-     return PONTO;
-}
+\. { return PONTO; }
 
-\(  {
-     simbolo = simb_abre_parenteses;
-     strncpy (token, yytext, TAM_TOKEN);
-     IMPRIME(" abre_parenteses  ");
-     return ABRE_PARENTESES;
-}
+\( { return ABRE_PARENTESES; }
 
-\)  {
-     simbolo = simb_fecha_parenteses;
-     strncpy (token, yytext, TAM_TOKEN);
-     IMPRIME(" fecha_parenteses ");
-     return FECHA_PARENTESES;
-}
+\) { return FECHA_PARENTESES; }
 
-{ident} {
-     simbolo = simb_identificador;
-     strncpy (token, yytext, TAM_TOKEN);
-     IMPRIME(" ident  ");
-     return IDENT;
-}
+{ident} { return IDENT; }
 
 %%
