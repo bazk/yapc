@@ -20,6 +20,7 @@
 
 .macro PARA
    movl $FIM_PGMA, %eax
+   movl $0, %ebx
    int  $SYSCALL
 .endm
 
@@ -147,7 +148,7 @@
 #  NADA
 # -----------------------------------------------------------------
 
-.macro NADA 
+.macro NADA
    nop
 .endm
 
@@ -177,18 +178,18 @@
    call _dsvf
 .endm
 
-_dsvf:   
-   popl %eax  
-   popl %ebx  
+_dsvf:
+   popl %eax
+   popl %ebx
    popl %ecx
    cmpl $0, %ecx
    je  _dsvf_falso
-   pushl %eax   
+   pushl %eax
    ret
 _dsvf_falso:
-   pushl %ebx 
+   pushl %ebx
    ret
-   
+
 # -----------------------------------------------------------------
 #  DSVR - Desvia para rótulo
 #
@@ -264,7 +265,7 @@ _dsvf_falso:
    imul %eax, %ebx
    push %ebx
 .endm
-      
+
 # -----------------------------------------------------------------
 #  DIVI
 # A divisão no intel é esquisita. O comando divl não usa dois
@@ -280,7 +281,7 @@ _dsvf_falso:
    idiv %edi     #  faz %edx:%eax / %edi
    push %eax     # empilha o resultado
 .endm
-      
+
 # -----------------------------------------------------------------
 #  INVR
 # -----------------------------------------------------------------
@@ -290,7 +291,7 @@ _dsvf_falso:
    imul $-1, %eax
    push %eax
 .endm
-      
+
 # -----------------------------------------------------------------
 #  CONJ (E)
 # -----------------------------------------------------------------
@@ -301,7 +302,7 @@ _dsvf_falso:
    and  %eax, %ebx
    push %ebx
 .endm
-      
+
 # -----------------------------------------------------------------
 #  DISJ (OU)
 # -----------------------------------------------------------------
@@ -312,7 +313,7 @@ _dsvf_falso:
    or   %eax, %ebx
    push %ebx
 .endm
-      
+
 # -----------------------------------------------------------------
 #  NEGA (not)
 # -----------------------------------------------------------------
@@ -337,7 +338,7 @@ _dsvf_falso:
 .endm
 
 _cmme:
-   cmpl %eax,  %ebx   
+   cmpl %eax,  %ebx
    jl _cmme_true
    movl $0, %ecx
    ret
@@ -358,7 +359,7 @@ _cmme_true:
 .endm
 
 _cmma:
-   cmpl %eax,  %ebx   
+   cmpl %eax,  %ebx
    jg _cmma_true
    movl $0, %ecx
    ret
@@ -366,7 +367,7 @@ _cmma_true:
    movl $1, %ecx
    ret
 
-   
+
 # -----------------------------------------------------------------
 #  CMIG
 # -----------------------------------------------------------------
@@ -379,7 +380,7 @@ _cmma_true:
 .endm
 
 _cmig:
-   cmpl %eax,  %ebx   
+   cmpl %eax,  %ebx
    je _cmig_true
    movl $0, %ecx
    ret
@@ -399,7 +400,7 @@ _cmig_true:
 .endm
 
 _cmdg:
-   cmpl %eax,  %ebx   
+   cmpl %eax,  %ebx
    jne _cmdg_true
    movl $0, %ecx
    ret
@@ -419,7 +420,7 @@ _cmdg_true:
 .endm
 
 _cmeg:
-   cmpl %eax,  %ebx   
+   cmpl %eax,  %ebx
    jle _cmle_true
    movl $0, %ecx
    ret
@@ -440,7 +441,7 @@ _cmle_true:
 .endm
 
 _cmag:
-   cmpl %eax,  %ebx   
+   cmpl %eax,  %ebx
    jge _cmge_true
    movl $0, %ecx
    ret
@@ -448,13 +449,13 @@ _cmge_true:
    movl $1, %ecx
    ret
 
-   
+
 
 # -----------------------------------------------------------------
 # CHPR p,m { M[s+1]:=i+1; M[s+2]:=m; s:= s+2;  i:=p}
 #
 # Alterado para: CHPR p,m { M[s+1]:=m; M[s+2]:=i+1; s:= s+2;  i:=p}
-# 
+#
 # CHPR - A implementação de chamadas de procedimento é diferente da
 # proposta original do livro. O problema é como guardar o ER e depois
 # disso guardar k. É possível fazer, porém fica muito complicado (até
@@ -473,7 +474,7 @@ _cmge_true:
 
 
 # -----------------------------------------------------------------
-# 
+#
 # ENPR k { s++; M[s]:=D[k]; D[k]:=s+1 }
 #
 # -----------------------------------------------------------------
@@ -521,7 +522,7 @@ _cmge_true:
   call printf
   addl $4, %esp
 .endm
-  
+
 
 
 # -----------------------------------------------------------------
@@ -536,7 +537,7 @@ RT:       pushl $\k
     pushl $\v
     call _imprime_RA
  .endm
- 
+
  _imprime_RA:
    popl %ebx  # ER
    popl %ecx  # v
@@ -546,15 +547,15 @@ RT:       pushl $\k
    pushl $strIniRA
    call printf
    addl $4, %esp
-   
-_impr_vars_locais:   
+
+_impr_vars_locais:
    cmpl $0, %ecx
    jge _fim_vars_locais
    pushl (%eax)
    pushl $strHEX
    call printf
    addl $8, %esp
-_fim_vars_locais: 
+_fim_vars_locais:
    push %ebx
    ret
 
@@ -569,7 +570,7 @@ _fim_vars_locais:
 .section .data
 .equ TAM_D, 10
 .lcomm D TAM_D
-   
+
 
 entr: .int 0
 strNumOut: .string "%d\n"
@@ -581,7 +582,7 @@ strHEX:   .string "%X\n"
 
 .section .text
 .equ FIM_PGMA, 1
-.equ SYSCALL, 0x80 
+.equ SYSCALL, 0x80
 
 .globl _start
 _start:
@@ -589,5 +590,5 @@ _start:
 .include "MEPA"
 
 
-   
+
 
