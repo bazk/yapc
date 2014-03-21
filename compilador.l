@@ -5,17 +5,18 @@
 #include "compilador.tab.h"
 #include "compilador.h"
 
-int yycolumn = 1;
+unsigned int line = 1, column = 1;
 
 #define YY_USER_ACTION \
      token.nome = yytext; \
-     token.linha = yylineno; \
-     token.coluna = yycolumn; \
-     token.tam = yycolumn + yyleng - 1; \
-     yycolumn += yyleng;
+     token.linha = line; \
+     token.coluna = column; \
+     token.tam = column + yyleng - 1; \
+     column += yyleng;
 %}
 
-%option yylineno
+%option noinput
+%option nounput
 
 pulo_linha [\n]
 
@@ -27,9 +28,13 @@ numero [0-9]+
 
 comentario "(*".*"*)"
 
+and \&\&
+
+or \|\|
+
 %%
 
-{pulo_linha} { yycolumn = 1; }
+{pulo_linha} { line++; column = 1; }
 
 {descarte}
 
@@ -45,6 +50,10 @@ begin { return T_BEGIN; }
 
 end { return T_END; }
 
+true { return T_TRUE; }
+
+false { return T_FALSE; }
+
 := { return ATRIBUICAO; }
 
 \; { return PONTO_E_VIRGULA; }
@@ -59,17 +68,13 @@ end { return T_END; }
 
 \) { return FECHA_PARENTESES; }
 
-\+ { return MAIS; }
+\+    { op = OP_SOMA; return OPERADOR_DISJ; }
+\-    { op = OP_SUBT; return OPERADOR_DISJ; }
+{or}  { op = OP_DISJ; return OPERADOR_DISJ; }
 
-\- { return MENOS; }
-
-\* { return ASTERISCO; }
-
-\/ { return BARRA; }
-
-\&\& { return AND; }
-
-\|\| { return  OR; }
+\*    { op = OP_MULT; return OPERADOR_CONJ; }
+\/    { op = OP_DIVI; return OPERADOR_CONJ; }
+{and} { op = OP_CONJ; return OPERADOR_CONJ; }
 
 {ident} { return IDENT; }
 

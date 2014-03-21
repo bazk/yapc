@@ -2,6 +2,7 @@
 #define _COMPILADOR_H_
 
 #include "defs.h"
+#include "utils.h"
 #include "tabsimbolos.h"
 
 struct {
@@ -14,9 +15,14 @@ struct {
 int num_vars, desloc_counter;
 int nivel_lexico;
 
+tipos_op op;
+pilha_t *O;
+
 tab_simbolos_t *ts;
 
 simbolo_t *l_elem;
+
+pilha_t *E, *T, *F;
 
 FILE *out;
 

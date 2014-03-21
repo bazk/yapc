@@ -38,6 +38,5 @@ simbolo_t *busca_ts(tab_simbolos_t *ts, char *nome, categorias_simb cat, unsigne
 unsigned int remove_nivel_ts(tab_simbolos_t *ts, unsigned int nivel_lexico);
 
 char *cat_str(categorias_simb cat);
-char *tipo_str(tipos_var tipo);
 
 #endif

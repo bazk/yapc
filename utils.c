@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "defs.h"
 #include "compilador.h"
@@ -58,4 +59,49 @@ void geraCodigo(FILE *fp, const char* label, const char* format, ...) {
     fprintf(fp, "\n");
 
     va_end(args);
+}
+
+pilha_t *pilha_inicializa() {
+    pilha_t *p = (pilha_t*) malloc(sizeof(pilha_t));
+    p->items = (void**) malloc(PILHA_CHUNK_SIZE * sizeof(void*));
+    p->it = 0;
+    return p;
+}
+
+void pilha_destroi(pilha_t *p) {
+    free(p->items);
+    free(p);
+}
+
+void pilha_push(pilha_t *p, void *i) {
+    p->items[p->it] = i;
+    p->it++;
+
+    if ((p->it % PILHA_CHUNK_SIZE) == 0) {
+        p->items = (void**) realloc(
+                p->items,
+                (p->it + TS_CHUNK_SIZE) * sizeof(void*));
+    }
+}
+
+void *pilha_pop(pilha_t *p) {
+    if (p->it == 0) {
+        fprintf(stderr, "warning: pop empty stack\n");
+        return NULL;
+    }
+
+    return p->items[--p->it];
+}
+
+void *pilha_peek(pilha_t *p) {
+    if (p->it == 0) {
+        fprintf(stderr, "warning: peeking empty stack\n");
+        return NULL;
+    }
+
+    return p->items[p->it];
+}
+
+void pilha_limpa(pilha_t *p) {
+    p->it = 0;
 }

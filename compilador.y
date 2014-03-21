@@ -8,8 +8,14 @@
 #include "compilador.h"
 #include "tabsimbolos.h"
 #include "utils.h"
-%}
 
+#define CHECK_TYPE(a, b, TIPO) if (a != TIPO || b != TIPO) { \
+    yyerror("operador '%s' não pode operar sobre '%s' e '%s'", \
+        OP_STR(op), TIPO_STR(a), TIPO_STR(b)); \
+    YYERROR; }
+
+extern int yylex();
+%}
 %define parse.error verbose
 
 %token PROGRAM ABRE_PARENTESES FECHA_PARENTESES
@@ -17,7 +23,8 @@
 %token T_BEGIN T_END VAR IDENT ATRIBUICAO
 %token PROCEDURE
 %token NUMERO
-%token MAIS MENOS ASTERISCO BARRA AND OR
+%token OPERADOR_CONJ OPERADOR_DISJ
+%token T_TRUE T_FALSE
 
 %%
 
@@ -99,20 +106,50 @@ atribuicao:     IDENT {
                         YYERROR;
                     }
                 } ATRIBUICAO expressao {
+                    tipos_var e = (tipos_var) pilha_pop(E);
+
+                    if (l_elem->params.tipo != e) {
+                        yyerror("expressão retornou tipo '%s' e não pode ser atribuída à variável '%s' do tipo '%s'",
+                            TIPO_STR(e), l_elem->nome, TIPO_STR(l_elem->params.tipo));
+                        YYERROR;
+                    }
+
                     geraCodigo(out, NULL, "ARMZ %d, %d", l_elem->nivel_lexico, l_elem->params.desloc);
                 };
 
-expressao:      expressao MAIS termo { geraCodigo(out, NULL, "SOMA"); } |
-                expressao MENOS termo { geraCodigo(out, NULL, "SUBT"); } |
-                expressao OR termo { geraCodigo(out, NULL, "DISJ"); } |
-                termo;
+expressao:      expressao OPERADOR_DISJ { pilha_push(O, (void*) op); } termo {
+                    tipos_var e = (tipos_var) pilha_pop(E);
+                    tipos_var t = (tipos_var) pilha_pop(T);
+                    tipos_op op = (tipos_op) pilha_pop(O);
 
-termo:          termo ASTERISCO fator { geraCodigo(out, NULL, "MULT"); } |
-                termo BARRA fator { geraCodigo(out, NULL, "DIVI"); } |
-                termo AND fator { geraCodigo(out, NULL, "CONJ"); } |
-                fator;
+                    switch (op) {
+                        case OP_SOMA: CHECK_TYPE(e, t, TIPO_INTEGER); geraCodigo(out, NULL, "SOMA"); break;
+                        case OP_SUBT: CHECK_TYPE(e, t, TIPO_INTEGER); geraCodigo(out, NULL, "SUBT"); break;
+                        case OP_DISJ: CHECK_TYPE(e, t, TIPO_BOOLEAN); geraCodigo(out, NULL, "DISJ"); break;
+                        default:      yyerror("operador inválido ('%s')", OP_STR(op)); YYERROR; break;
+                    }
 
-fator:          ABRE_PARENTESES expressao FECHA_PARENTESES |
+                    pilha_push(E, (void*) e);
+                } |
+                termo { pilha_push(E, pilha_pop(T)); };
+
+termo:          termo OPERADOR_CONJ { pilha_push(O, (void*) op); } fator {
+                    tipos_var t = (tipos_var) pilha_pop(T);
+                    tipos_var f = (tipos_var) pilha_pop(F);
+                    tipos_op op = (tipos_op) pilha_pop(O);
+
+                    switch (op) {
+                        case OP_MULT: CHECK_TYPE(t, f, TIPO_INTEGER); geraCodigo(out, NULL, "MULT"); break;
+                        case OP_DIVI: CHECK_TYPE(t, f, TIPO_INTEGER); geraCodigo(out, NULL, "DIVI"); break;
+                        case OP_CONJ: CHECK_TYPE(t, f, TIPO_BOOLEAN); geraCodigo(out, NULL, "CONJ"); break;
+                        default:      yyerror("operador inválido ('%s')", OP_STR(op)); YYERROR; break;
+                    }
+
+                    pilha_push(T, (void*) t);
+                } |
+                fator { pilha_push(T, pilha_pop(F)); };
+
+fator:          ABRE_PARENTESES expressao { pilha_push(F, pilha_pop(E)); } FECHA_PARENTESES |
                 IDENT {
                     simbolo_t *simb = busca_ts(ts, token.nome, CAT_VS, nivel_lexico);
 
@@ -121,16 +158,26 @@ fator:          ABRE_PARENTESES expressao FECHA_PARENTESES |
                         YYERROR;
                     }
 
+                    pilha_push(F, (void*) simb->params.tipo);
                     geraCodigo(out, NULL, "CRVL %d, %d", simb->nivel_lexico, simb->params.desloc);
                 } |
                 NUMERO {
+                    pilha_push(F, (void*) TIPO_INTEGER);
                     geraCodigo(out, NULL, "CRCT %s", token.nome);
+                } |
+                T_TRUE {
+                    pilha_push(F, (void*) TIPO_BOOLEAN);
+                    geraCodigo(out, NULL, "CRCT %d", 1);
+                } |
+                T_FALSE {
+                    pilha_push(F, (void*) TIPO_BOOLEAN);
+                    geraCodigo(out, NULL, "CRCT %d", 0);
                 };
 
 %%
 
 int main(int argc, char* argv[]) {
-    unsigned int err;
+    unsigned int err = 0;
 
     extern FILE *yyin;
 
@@ -154,7 +201,17 @@ int main(int argc, char* argv[]) {
     nivel_lexico = 0;
     ts = inicializa_ts();
 
+    E = pilha_inicializa();
+    T = pilha_inicializa();
+    F = pilha_inicializa();
+    O = pilha_inicializa();
+
     err = yyparse();
+
+    pilha_destroi(E);
+    pilha_destroi(T);
+    pilha_destroi(F);
+    pilha_destroi(O);
 
     destroi_ts(ts);
 

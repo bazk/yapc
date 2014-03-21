@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "defs.h"
+#include "utils.h"
 #include "tabsimbolos.h"
 
 #ifdef DEBUG
@@ -12,6 +13,7 @@ tab_simbolos_t *inicializa_ts() {
     tab_simbolos_t *ts = (tab_simbolos_t*) malloc(sizeof(tab_simbolos_t));
     ts->simbolos = (simbolo_t*) malloc(TS_CHUNK_SIZE * sizeof(simbolo_t));
     ts->it = 0;
+    return ts;
 }
 
 void destroi_ts(tab_simbolos_t *ts) {
@@ -29,7 +31,7 @@ void imprime_ts(tab_simbolos_t *ts) {
             ts->simbolos[i].nivel_lexico);
 
         if (ts->simbolos[i].cat == CAT_VS)
-            printf("{tipo=%s}", tipo_str(ts->simbolos[i].params.tipo));
+            printf("{tipo=%s}", TIPO_STR(ts->simbolos[i].params.tipo));
 
         printf("\n");
     }
@@ -63,6 +65,9 @@ int define_tipo_ts(tab_simbolos_t *ts, char *token_tipo) {
 
     if (strncmp(token_tipo, "integer", TAM_TOKEN) == 0) {
         tipo = TIPO_INTEGER;
+    }
+    else if (strncmp(token_tipo, "boolean", TAM_TOKEN) == 0) {
+        tipo = TIPO_BOOLEAN;
     }
     else {
         return 1;
@@ -119,11 +124,5 @@ char *cat_str(categorias_simb cat) {
         case CAT_VS:    return "VS";    break;
         case CAT_PROC:  return "PROC";  break;
     }
-}
-
-char *tipo_str(tipos_var tipo) {
-    switch (tipo) {
-        case TIPO_INTEGER:     return "integer";    break;
-        case TIPO_INDEFINIDO:  return "undefined";  break;
-    }
+    return NULL;
 }
