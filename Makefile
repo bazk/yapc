@@ -1,4 +1,4 @@
-CFLAGS = -std=c99
+CFLAGS = -std=gnu99
 
 all: compilador
 
