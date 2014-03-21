@@ -11,10 +11,12 @@ struct {
     int tam;
 } token;
 
-int num_vars;
+int num_vars, desloc_counter;
 int nivel_lexico;
 
 tab_simbolos_t *ts;
+
+simbolo_t *l_elem;
 
 FILE *out;
 

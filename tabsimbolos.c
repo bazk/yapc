@@ -4,6 +4,10 @@
 #include "defs.h"
 #include "tabsimbolos.h"
 
+#ifdef DEBUG
+#define DEBUG_TS
+#endif
+
 tab_simbolos_t *inicializa_ts() {
     tab_simbolos_t *ts = (tab_simbolos_t*) malloc(sizeof(tab_simbolos_t));
     ts->simbolos = (simbolo_t*) malloc(TS_CHUNK_SIZE * sizeof(simbolo_t));
@@ -18,12 +22,18 @@ void destroi_ts(tab_simbolos_t *ts) {
 void imprime_ts(tab_simbolos_t *ts) {
     unsigned int i;
 
-    printf("ID\tNOME\tCAT\tNL\tTIPO\n");
+    printf("================================================================================\n");
+    printf("NOME    CAT     NL      PARAMS\n");
     for (i=0; i<ts->it; i++) {
-        printf("%d\t%s\t%d\t%d\t%d\n", i, ts->simbolos[i].nome, ts->simbolos[i].cat,
-            ts->simbolos[i].nivel_lexico, ts->simbolos[i].params.tipo);
+        printf("%s\t%s\t%d\t", ts->simbolos[i].nome, cat_str(ts->simbolos[i].cat),
+            ts->simbolos[i].nivel_lexico);
+
+        if (ts->simbolos[i].cat == CAT_VS)
+            printf("{tipo=%s}", tipo_str(ts->simbolos[i].params.tipo));
+
+        printf("\n");
     }
-    printf("\n");
+    printf("================================================================================\n\n");
 }
 
 simbolo_t *insere_ts(tab_simbolos_t *ts, char *nome, categorias_simb cat, unsigned int nivel_lexico) {
@@ -39,6 +49,11 @@ simbolo_t *insere_ts(tab_simbolos_t *ts, char *nome, categorias_simb cat, unsign
                 (ts->it + TS_CHUNK_SIZE) * sizeof(simbolo_t));
     }
 
+#ifdef DEBUG_TS
+    printf("insere_ts(%s, %s, %d)\n", nome, cat_str(cat), nivel_lexico);
+    imprime_ts(ts);
+#endif
+
     return &ts->simbolos[ts->it-1];
 }
 
@@ -48,9 +63,6 @@ int define_tipo_ts(tab_simbolos_t *ts, char *token_tipo) {
 
     if (strncmp(token_tipo, "integer", TAM_TOKEN) == 0) {
         tipo = TIPO_INTEGER;
-    }
-    else if (strncmp(token_tipo, "real", TAM_TOKEN) == 0) {
-        tipo = TIPO_REAL;
     }
     else {
         return 1;
@@ -62,13 +74,16 @@ int define_tipo_ts(tab_simbolos_t *ts, char *token_tipo) {
         i--;
     }
 
+#ifdef DEBUG_TS
+    printf("define_tipo_ts(%s)\n", token_tipo);
+    imprime_ts(ts);
+#endif
+
     return 0;
 }
 
 simbolo_t *busca_ts(tab_simbolos_t *ts, char *nome, categorias_simb cat, unsigned int nivel_lexico) {
-    unsigned int i;
-
-    for (i = (ts->it-1); i >= 0; i++) {
+    for (int i = (ts->it-1); i >= 0; i--) {
         if ( (ts->simbolos[i].cat == cat) &&
              (ts->simbolos[i].nivel_lexico == nivel_lexico) &&
              (strncmp(ts->simbolos[i].nome, nome, TAM_TOKEN) == 0) ) {
@@ -90,5 +105,25 @@ unsigned int remove_nivel_ts(tab_simbolos_t *ts, unsigned int nivel_lexico) {
     }
 
     ts->it = ++i;
+
+#ifdef DEBUG_TS
+    printf("remove_nivel_ts(%d)\n", nivel_lexico);
+    imprime_ts(ts);
+#endif
+
     return count;
+}
+
+char *cat_str(categorias_simb cat) {
+    switch (cat) {
+        case CAT_VS:    return "VS";    break;
+        case CAT_PROC:  return "PROC";  break;
+    }
+}
+
+char *tipo_str(tipos_var tipo) {
+    switch (tipo) {
+        case TIPO_INTEGER:     return "integer";    break;
+        case TIPO_INDEFINIDO:  return "undefined";  break;
+    }
 }

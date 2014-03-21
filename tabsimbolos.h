@@ -8,12 +8,6 @@ typedef enum {
     CAT_PROC
 } categorias_simb;
 
-typedef enum {
-    TIPO_INDEFINIDO,
-    TIPO_INTEGER,
-    TIPO_REAL
-} tipos_var;
-
 typedef union {
     struct {
         int desloc;
@@ -43,5 +37,7 @@ int define_tipo_ts(tab_simbolos_t *ts, char *token_tipo);
 simbolo_t *busca_ts(tab_simbolos_t *ts, char *nome, categorias_simb cat, unsigned int nivel_lexico);
 unsigned int remove_nivel_ts(tab_simbolos_t *ts, unsigned int nivel_lexico);
 
+char *cat_str(categorias_simb cat);
+char *tipo_str(tipos_var tipo);
 
 #endif

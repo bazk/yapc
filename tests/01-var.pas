@@ -1,5 +1,5 @@
 program p(input, output);
 var a, b: integer;
-    c: real;
+    c: integer;
 begin
 end.

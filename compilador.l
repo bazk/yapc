@@ -59,6 +59,20 @@ end { return T_END; }
 
 \) { return FECHA_PARENTESES; }
 
+\+ { return MAIS; }
+
+\- { return MENOS; }
+
+\* { return ASTERISCO; }
+
+\/ { return BARRA; }
+
+\&\& { return AND; }
+
+\|\| { return  OR; }
+
 {ident} { return IDENT; }
+
+{numero} { return NUMERO; }
 
 %%

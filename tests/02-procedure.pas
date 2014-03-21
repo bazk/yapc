@@ -1,11 +1,11 @@
 program p(input, output);
 var a, b: integer;
 procedure p;
-var c: real;
+var c: integer;
 begin
     (* codigo do procedure p *)
 end;
-procedure v;
+procedure v(x,y: integer; z: integer);
 var d: integer;
 begin
     (* codigo do procedure v *)

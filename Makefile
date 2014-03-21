@@ -1,8 +1,8 @@
-CFLAGS =
+CFLAGS = -std=c99
 
 all: compilador
 
-debug: CFLAGS += -DDEBUG -g
+debug: CFLAGS += -DDEBUG -g -Wall
 debug: compilador
 
 compilador: lex.yy.c compilador.tab.c tabsimbolos.o utils.o compilador.h
