@@ -8,7 +8,7 @@ begin
     b := 1;
     if ((a < 10) and (b > 0)) then
     begin
-        writeln(a);
+        write(a);
         a := a + 1;
         b := 2;
         if (b > a) then
@@ -21,5 +21,5 @@ begin
     end;
 
     b := a + b;
-    writeln(a, b)
+    write(a, b)
 end.

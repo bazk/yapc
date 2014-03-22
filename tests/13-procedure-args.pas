@@ -9,5 +9,5 @@ begin
 end;
 begin
     v(3, 2, 5);
-    writeln(a, b)
+    write(a, b)
 end.
