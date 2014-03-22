@@ -6,13 +6,22 @@
 #define PILHA_CHUNK_SIZE 2
 
 typedef enum {
-    CAT_VS,
-    CAT_PROC,
+    CAT_VS = 1,
+    CAT_PROC = 2,
+    CAT_PARAM = 4
 } categorias_simb;
 
 static inline char *CAT_STR(categorias_simb cat) {
-    static char *strings[] = {"VS", "PROC"};
-    return strings[cat];
+    if ((cat & CAT_VS) != 0)
+        return "VS";
+
+    if ((cat & CAT_PROC) != 0)
+        return "PROC";
+
+    if ((cat & CAT_PARAM) != 0)
+        return "PARAM";
+
+    return "?";
 }
 
 typedef enum {
