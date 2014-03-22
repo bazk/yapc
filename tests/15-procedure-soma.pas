@@ -15,8 +15,9 @@ begin
    s:=0; i:=0;
    while i<=n do
    begin
-      soma; write(s); i:=i+1
+      soma;
+      write(s);
+      i:=i+1
    end
 end.
-      
-      
+
