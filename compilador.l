@@ -58,6 +58,12 @@ while { return WHILE; }
 
 do { return DO; }
 
+if { return IF; }
+
+then { return THEN; }
+
+else { return ELSE; }
+
 := { return ATRIBUICAO; }
 
 \; { return PONTO_E_VIRGULA; }

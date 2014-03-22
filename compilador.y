@@ -24,6 +24,8 @@ extern int yylex();
 
 %define parse.error verbose
 
+%expect 1
+
 %token PROGRAM ABRE_PARENTESES FECHA_PARENTESES
 %token VIRGULA PONTO_E_VIRGULA DOIS_PONTOS PONTO
 %token T_BEGIN T_END VAR IDENT ATRIBUICAO
@@ -33,6 +35,7 @@ extern int yylex();
 %token T_TRUE T_FALSE
 %token RELACAO
 %token WHILE DO
+%token IF THEN ELSE
 
 %%
 
@@ -125,11 +128,12 @@ comando:        NUMERO DOIS_PONTOS comando_sem_rotulo | comando_sem_rotulo;
 comando_sem_rotulo:
                 comando_composto |
                 comando_repetitivo |
+                comando_condicional |
                 IDENT { strncpy(l_token, token.nome, TAM_TOKEN); } atr_ou_chamada |
                 %empty;
 
 atr_ou_chamada: ATRIBUICAO expressao atribuicao |
-                lista_parametros PONTO_E_VIRGULA chamada_de_procedimento;
+                lista_parametros chamada_de_procedimento;
 
 atribuicao:     %empty {
                     simbolo_t *l_elem = busca_ts(ts, l_token, CAT_VS, nivel_lexico);
@@ -282,6 +286,38 @@ comando_repetitivo:
                     geraCodigo(out, label, "NADA");
                 };
 
+comando_condicional:
+                IF expressao {
+                    tipos_var e = (tipos_var) pilha_pop(E);
+
+                    if (e != TIPO_BOOLEAN) {
+                        yyerror("expressão deve retornar 'boolean', retornou '%s'", TIPO_STR(e));
+                        YYERROR;
+                    }
+
+                    pilha_push(pilha_rot_cond, (int) rotcounter_cond);
+                    geraCodigo(out, NULL, "DSVF e%d", rotcounter_cond);
+                    rotcounter_cond++;
+                } THEN comando_sem_rotulo {
+                    int cond_rot = (int) pilha_pop(pilha_rot_cond);
+
+                    geraCodigo(out, NULL, "DSVS s%d", cond_rot);
+
+                    char label[4];
+                    sprintf(label, "e%d", cond_rot);
+                    geraCodigo(out, label, "NADA");
+
+                    pilha_push(pilha_rot_cond, cond_rot);
+                } condicional_else {
+                    int cond_rot = (int) pilha_pop(pilha_rot_cond);
+
+                    char label[4];
+                    sprintf(label, "s%d", cond_rot);
+                    geraCodigo(out, label, "NADA");
+                };
+
+condicional_else: ELSE comando_sem_rotulo | %empty;
+
 %%
 
 int main(int argc, char* argv[]) {
@@ -320,6 +356,7 @@ int main(int argc, char* argv[]) {
     O = pilha_inicializa();
     R = pilha_inicializa();
     pilha_rot_loop = pilha_inicializa();
+    pilha_rot_cond = pilha_inicializa();
 
     err = yyparse();
 
@@ -330,6 +367,7 @@ int main(int argc, char* argv[]) {
     pilha_destroi(O);
     pilha_destroi(R);
     pilha_destroi(pilha_rot_loop);
+    pilha_destroi(pilha_rot_cond);
 
     destroi_ts(ts);
 
