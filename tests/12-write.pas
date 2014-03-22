@@ -10,16 +10,16 @@ begin
     begin
         writeln(a);
         a := a + 1;
-        b := 0;
+        b := 2;
         if (b > a) then
             b := b + 1
         else
         begin
             a := 10;
-            writeln(b);
+            write(b+1);
         end
     end;
 
     b := a + b;
-    writeln(a)
+    writeln(a, b)
 end.
