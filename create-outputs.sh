@@ -70,6 +70,12 @@ function dotest() {
     return 0
 }
 
+read -p "Are you sure, this will replace current test outputs? [y/N] " yn
+case $yn in
+    [Yy]* ) ;;
+    * )     exit 0;;
+esac
+
 for t in tests/*.pas; do
     if ! dotest $(basename $t); then
         exit 1
