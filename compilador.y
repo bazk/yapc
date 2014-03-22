@@ -34,7 +34,7 @@ extern int yylex();
 %token RELACAO
 %token WHILE DO
 %token IF THEN ELSE
-%token WRITE
+%token READ WRITE
 
 %precedence LOWER_THAN_ELSE
 %precedence ELSE
@@ -132,6 +132,7 @@ comando_sem_rotulo:
                 comando_repetitivo |
                 comando_condicional |
                 write |
+                read |
                 IDENT { strncpy(l_token, token.nome, TAM_TOKEN); } atr_ou_chamada |
                 %empty;
 
@@ -266,6 +267,33 @@ expressao_write: expressao {
                     }
 
                     geraCodigo(out, NULL, "IMPR");
+                };
+
+read:           READ lista_parametros_read;
+
+lista_parametros_read:
+                ABRE_PARENTESES lista_variaveis_read FECHA_PARENTESES |
+                ABRE_PARENTESES FECHA_PARENTESES |
+                %empty;
+
+lista_variaveis_read:
+                lista_variaveis_read VIRGULA variavel_read | variavel_read;
+
+variavel_read:  IDENT {
+                    simbolo_t *simb = busca_ts(ts, token.nome, CAT_VS, nivel_lexico);
+
+                    if (simb == NULL) {
+                        yyerror("variável '%s' não foi definida", token.nome);
+                        YYERROR;
+                    }
+
+                    if (simb->params.tipo != TIPO_INTEGER) {
+                        yyerror("procedimento 'read' não pode operar sobre '%s'", TIPO_STR(simb->params.tipo));
+                        YYERROR;
+                    }
+
+                    geraCodigo(out, NULL, "LEIT");
+                    geraCodigo(out, NULL, "ARMZ %d, %d", simb->nivel_lexico, simb->params.desloc);
                 };
 
 chamada_de_procedimento:

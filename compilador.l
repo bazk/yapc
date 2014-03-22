@@ -28,10 +28,6 @@ numero [0-9]+
 
 comentario "(*".*"*)"
 
-and \&\&
-
-or \|\|
-
 %%
 
 {pulo_linha} { line++; column = 1; }
@@ -64,10 +60,9 @@ then { return THEN; }
 
 else { return ELSE; }
 
-write { yywarning("procedimento 'write' não é implementado nesta linguagem, assumindo 'writeln'");
-        return WRITE; }
+write { return WRITE; }
 
-writeln { return WRITE; }
+read { return READ; }
 
 := { return ATRIBUICAO; }
 
@@ -85,11 +80,11 @@ writeln { return WRITE; }
 
 \+    { op = OP_SOMA; return OPERADOR_DISJ; }
 \-    { op = OP_SUBT; return OPERADOR_DISJ; }
-{or}  { op = OP_DISJ; return OPERADOR_DISJ; }
+or    { op = OP_DISJ; return OPERADOR_DISJ; }
 
 \*    { op = OP_MULT; return OPERADOR_CONJ; }
-\/    { op = OP_DIVI; return OPERADOR_CONJ; }
-{and} { op = OP_CONJ; return OPERADOR_CONJ; }
+div   { op = OP_DIVI; return OPERADOR_CONJ; }
+and   { op = OP_CONJ; return OPERADOR_CONJ; }
 
 \=   { rel = REL_IGUAL;         return RELACAO; }
 \<\> { rel = REL_DIFERENTE;     return RELACAO; }
