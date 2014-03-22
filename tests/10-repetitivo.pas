@@ -6,7 +6,7 @@ begin
         a := a - 1;
 
     b := 1;
-    while ((a < 10) && (b > 0)) do
+    while ((a < 10) and (b > 0)) do
     begin
         a := a + 1;
         b := 0;

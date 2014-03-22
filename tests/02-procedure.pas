@@ -12,6 +12,6 @@ begin
 end;
 begin
     a := 5;
-    b := a / 2;
+    b := a div 2;
     p
 end.

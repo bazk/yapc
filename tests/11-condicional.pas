@@ -6,7 +6,7 @@ begin
         a := a - 1;
 
     b := 1;
-    if ((a < 10) && (b > 0)) then
+    if ((a < 10) and (b > 0)) then
     begin
         a := a + 1;
         b := 0;
