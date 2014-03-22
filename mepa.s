@@ -19,6 +19,9 @@
 # -----------------------------------------------------------------
 
 .macro PARA
+   pushl $0
+   call fflush
+   addl $4, %esp
    movl $FIM_PGMA, %eax
    movl $0, %ebx
    int  $SYSCALL
