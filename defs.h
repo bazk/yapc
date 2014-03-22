@@ -6,6 +6,16 @@
 #define PILHA_CHUNK_SIZE 2
 
 typedef enum {
+    CAT_VS,
+    CAT_PROC,
+} categorias_simb;
+
+static inline char *CAT_STR(categorias_simb cat) {
+    static char *strings[] = {"VS", "PROC"};
+    return strings[cat];
+}
+
+typedef enum {
     TIPO_INDEFINIDO = 0,
     TIPO_INTEGER,
     TIPO_BOOLEAN

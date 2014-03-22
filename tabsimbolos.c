@@ -24,18 +24,26 @@ void destroi_ts(tab_simbolos_t *ts) {
 void imprime_ts(tab_simbolos_t *ts) {
     unsigned int i;
 
-    printf("================================================================================\n");
-    printf("NOME    CAT     NL      PARAMS\n");
+    fprintf(stderr, "================================================================================\n");
+    fprintf(stderr, "NOME    CAT     NL      PARAMS\n");
     for (i=0; i<ts->it; i++) {
-        printf("%s\t%s\t%d\t", ts->simbolos[i].nome, cat_str(ts->simbolos[i].cat),
+        fprintf(stderr, "%s\t%s\t%d\t", ts->simbolos[i].nome, CAT_STR(ts->simbolos[i].cat),
             ts->simbolos[i].nivel_lexico);
 
-        if (ts->simbolos[i].cat == CAT_VS)
-            printf("{tipo=%s}", TIPO_STR(ts->simbolos[i].params.tipo));
+        fprintf(stderr, "{");
 
-        printf("\n");
+        if (ts->simbolos[i].cat == CAT_VS) {
+            fprintf(stderr, "desloc=%d, ", ts->simbolos[i].params.desloc);
+            fprintf(stderr, "tipo=%s", TIPO_STR(ts->simbolos[i].params.tipo));
+        }
+        else if (ts->simbolos[i].cat == CAT_PROC) {
+            fprintf(stderr, "rot=%s, ", ts->simbolos[i].params.rot);
+            fprintf(stderr, "num_args=%d", ts->simbolos[i].params.num_args);
+        }
+
+        fprintf(stderr, "}\n");
     }
-    printf("================================================================================\n\n");
+    fprintf(stderr, "================================================================================\n\n");
 }
 
 simbolo_t *insere_ts(tab_simbolos_t *ts, char *nome, categorias_simb cat, unsigned int nivel_lexico) {
@@ -52,14 +60,14 @@ simbolo_t *insere_ts(tab_simbolos_t *ts, char *nome, categorias_simb cat, unsign
     }
 
 #ifdef DEBUG_TS
-    printf("insere_ts(%s, %s, %d)\n", nome, cat_str(cat), nivel_lexico);
+    fprintf(stderr, "insere_ts(%s, %s, %d)\n", nome, CAT_STR(cat), nivel_lexico);
     imprime_ts(ts);
 #endif
 
     return &ts->simbolos[ts->it-1];
 }
 
-int define_tipo_ts(tab_simbolos_t *ts, char *token_tipo) {
+int define_tipo_ts(tab_simbolos_t *ts, char *token_tipo, categorias_simb cat) {
     tipos_var tipo;
     int i = (ts->it-1);
 
@@ -74,13 +82,15 @@ int define_tipo_ts(tab_simbolos_t *ts, char *token_tipo) {
     }
 
     while ((i >= 0) && (ts->simbolos[i].params.tipo == TIPO_INDEFINIDO)) {
-        if (ts->simbolos[i].cat == CAT_VS)
-            ts->simbolos[i].params.tipo = tipo;
+        if (ts->simbolos[i].cat != cat)
+            break;
+
+        ts->simbolos[i].params.tipo = tipo;
         i--;
     }
 
 #ifdef DEBUG_TS
-    printf("define_tipo_ts(%s)\n", token_tipo);
+    fprintf(stderr, "define_tipo_ts(%s, %s)\n", token_tipo, CAT_STR(cat));
     imprime_ts(ts);
 #endif
 
@@ -89,7 +99,7 @@ int define_tipo_ts(tab_simbolos_t *ts, char *token_tipo) {
 
 simbolo_t *busca_ts(tab_simbolos_t *ts, char *nome, categorias_simb cat, unsigned int nivel_lexico) {
 #ifdef DEBUG_TS
-    printf("busca_ts(%s, %s, %d)\n", nome, cat_str(cat), nivel_lexico);
+    fprintf(stderr, "busca_ts(%s, %s, %d)\n", nome, CAT_STR(cat), nivel_lexico);
 #endif
 
     for (int i = (ts->it-1); i >= 0; i--) {
@@ -116,17 +126,9 @@ unsigned int remove_nivel_ts(tab_simbolos_t *ts, unsigned int nivel_lexico) {
     ts->it = ++i;
 
 #ifdef DEBUG_TS
-    printf("remove_nivel_ts(%d)\n", nivel_lexico);
+    fprintf(stderr, "remove_nivel_ts(%d)\n", nivel_lexico);
     imprime_ts(ts);
 #endif
 
     return count;
-}
-
-char *cat_str(categorias_simb cat) {
-    switch (cat) {
-        case CAT_VS:    return "VS";    break;
-        case CAT_PROC:  return "PROC";  break;
-    }
-    return NULL;
 }

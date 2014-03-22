@@ -3,11 +3,6 @@
 
 #include "defs.h"
 
-typedef enum {
-    CAT_VS,
-    CAT_PROC
-} categorias_simb;
-
 typedef union {
     struct {
         int desloc;
@@ -36,10 +31,8 @@ void destroi_ts(tab_simbolos_t *ts);
 void imprime_ts(tab_simbolos_t *ts);
 
 simbolo_t *insere_ts(tab_simbolos_t *ts, char *nome, categorias_simb cat, unsigned int nivel_lexico);
-int define_tipo_ts(tab_simbolos_t *ts, char *token_tipo);
+int define_tipo_ts(tab_simbolos_t *ts, char *token_tipo, categorias_simb cat);
 simbolo_t *busca_ts(tab_simbolos_t *ts, char *nome, categorias_simb cat, unsigned int nivel_lexico);
 unsigned int remove_nivel_ts(tab_simbolos_t *ts, unsigned int nivel_lexico);
-
-char *cat_str(categorias_simb cat);
 
 #endif
