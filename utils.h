@@ -9,6 +9,7 @@ typedef struct {
 } pilha_t;
 
 void yyerror(const char *s, ...);
+void yywarning(const char *s, ...);
 void geraCodigo(FILE *fp, const char* label, const char* format, ...);
 
 pilha_t *pilha_inicializa();

@@ -132,10 +132,10 @@ comando_sem_rotulo:
                 IDENT { strncpy(l_token, token.nome, TAM_TOKEN); } atr_ou_chamada |
                 %empty;
 
-atr_ou_chamada: ATRIBUICAO expressao atribuicao |
-                lista_parametros chamada_de_procedimento;
+atr_ou_chamada: ATRIBUICAO atribuicao |
+                chamada_de_procedimento;
 
-atribuicao:     %empty {
+atribuicao:     expressao {
                     simbolo_t *l_elem = busca_ts(ts, l_token, CAT_VS, nivel_lexico);
                     tipos_var e = (tipos_var) pilha_pop(E);
 
@@ -248,15 +248,24 @@ lista_expressoes: expressao VIRGULA lista_expressoes | expressao;
 
 lista_parametros: ABRE_PARENTESES lista_expressoes FECHA_PARENTESES | %empty;
 
-chamada_de_procedimento: %empty {
-                    simbolo_t *proc = busca_ts(ts, l_token, CAT_PROC, nivel_lexico);
-
-                    if (proc == NULL) {
-                        yyerror("procedimento '%s' não foi definido", l_token);
-                        YYERROR;
+chamada_de_procedimento: lista_parametros {
+                    if (strncmp(l_token, "writeln", TAM_TOKEN) == 0) {
+                        geraCodigo(out, NULL, "IMPR");
                     }
+                    else if (strncmp(l_token, "write", TAM_TOKEN) == 0) {
+                        yywarning("procedimento 'write' não é implementado nesta linguagem, assumindo 'writeln'");
+                        geraCodigo(out, NULL, "IMPR");
+                    }
+                    else {
+                        simbolo_t *proc = busca_ts(ts, l_token, CAT_PROC, nivel_lexico);
 
-                    geraCodigo(out, NULL, "CHPR %s, %d", proc->params.rot, nivel_lexico);
+                        if (proc == NULL) {
+                            yyerror("procedimento '%s' não foi definido", l_token);
+                            YYERROR;
+                        }
+
+                        geraCodigo(out, NULL, "CHPR %s, %d", proc->params.rot, nivel_lexico);
+                    }
                 };
 
 comando_repetitivo:
