@@ -1,5 +1,10 @@
 #!/bin/bash
 
+stop_on_fail=0
+if [ "$1" == "--stop-on-fail" -o "$1" == "-f" ]; then
+    stop_on_fail=1
+fi
+
 outdir="/tmp/yapc-test"
 mkdir -p ${outdir}
 
@@ -79,6 +84,8 @@ suc=0
 for t in tests/*.pas; do
     if dotest $(basename $t); then
         suc=$((suc+1))
+    elif [ ${stop_on_fail} -eq 1 ]; then
+        break
     fi
 
     count=$((count+1))
