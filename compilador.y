@@ -24,8 +24,6 @@ extern int yylex();
 
 %define parse.error verbose
 
-%expect 1
-
 %token PROGRAM ABRE_PARENTESES FECHA_PARENTESES
 %token VIRGULA PONTO_E_VIRGULA DOIS_PONTOS PONTO
 %token T_BEGIN T_END VAR IDENT ATRIBUICAO
@@ -37,6 +35,9 @@ extern int yylex();
 %token WHILE DO
 %token IF THEN ELSE
 %token WRITE
+
+%precedence LOWER_THAN_ELSE
+%precedence ELSE
 
 %%
 
@@ -286,7 +287,7 @@ lista_parametros:
 
 lista_expressoes: lista_expressoes VIRGULA expressao_proc | expressao_proc;
 
-expressao_proc: expressao { tipos_var e = (tipos_var) pilha_pop(E); };
+expressao_proc: expressao { pilha_pop(E); };
 
 comando_repetitivo:
                 WHILE {
@@ -315,8 +316,15 @@ comando_repetitivo:
                     geraCodigo(out, label, "NADA");
                 };
 
-comando_condicional:
-                IF expressao {
+comando_condicional: if_then else {
+                    int cond_rot = (int) pilha_pop(pilha_rot_cond);
+
+                    char label[4];
+                    sprintf(label, "s%d", cond_rot);
+                    geraCodigo(out, label, "NADA");
+                };
+
+if_then:        IF expressao {
                     tipos_var e = (tipos_var) pilha_pop(E);
 
                     if (e != TIPO_BOOLEAN) {
@@ -337,15 +345,10 @@ comando_condicional:
                     geraCodigo(out, label, "NADA");
 
                     pilha_push(pilha_rot_cond, cond_rot);
-                } condicional_else {
-                    int cond_rot = (int) pilha_pop(pilha_rot_cond);
-
-                    char label[4];
-                    sprintf(label, "s%d", cond_rot);
-                    geraCodigo(out, label, "NADA");
                 };
 
-condicional_else: ELSE comando_sem_rotulo | %empty;
+else:           ELSE comando_sem_rotulo |
+                %prec LOWER_THAN_ELSE %empty;
 
 %%
 
