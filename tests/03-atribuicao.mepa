@@ -1,6 +1,7 @@
     INPP
     AMEM 2
-    AMEM 1
+    DSVS main
+main: NADA
     CRCT 5
     ARMZ 0, 1
     CRVL 0, 1
@@ -9,11 +10,11 @@
     MULT
     SOMA
     ARMZ 0, 0
-    CRVL 0, 1
+    CRVL 0, 0
     CRCT 2
     SUBT
     CRCT 10
     MULT
     ARMZ 0, 0
-    DMEM 3
+    DMEM 2
     PARA
