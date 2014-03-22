@@ -14,8 +14,14 @@
         OP_STR(op), TIPO_STR(a), TIPO_STR(b)); \
     YYERROR; }
 
+#define CHECK_TYPE_R(a, b, TIPO) if (a != TIPO || b != TIPO) { \
+    yyerror("relação '%s' não pode operar sobre '%s' e '%s'", \
+        REL_STR(rel), TIPO_STR(a), TIPO_STR(b)); \
+    YYERROR; }
+
 extern int yylex();
 %}
+
 %define parse.error verbose
 
 %token PROGRAM ABRE_PARENTESES FECHA_PARENTESES
@@ -25,21 +31,30 @@ extern int yylex();
 %token NUMERO
 %token OPERADOR_CONJ OPERADOR_DISJ
 %token T_TRUE T_FALSE
+%token RELACAO
 
 %%
 
 programa:       { geraCodigo(out, NULL, "INPP"); }
                 PROGRAM IDENT
                 ABRE_PARENTESES lista_idents FECHA_PARENTESES PONTO_E_VIRGULA
-                bloco PONTO
+                bloco_principal PONTO
                 { geraCodigo(out, NULL, "PARA"); };
 
 lista_idents:   lista_idents VIRGULA IDENT |
                 IDENT;
 
-bloco:          parte_declara_vars
+bloco_principal: parte_declara_vars
+                { geraCodigo(out, NULL, "DSVS main"); }
                 declara_procs
+                { geraCodigo(out, "main", "NADA"); }
                 comando_composto;
+
+bloco:          { nivel_lexico++; }
+                parte_declara_vars
+                declara_procs
+                comando_composto
+                { nivel_lexico--; };
 
 parte_declara_vars: VAR { desloc_counter = 0; } declara_vars | ;
 
@@ -67,10 +82,13 @@ tipo:           IDENT {
 declara_procs:  declara_proc PONTO_E_VIRGULA declara_procs | ;
 
 declara_proc:   PROCEDURE IDENT {
-                    insere_ts(ts, token.nome, CAT_PROC, nivel_lexico);
-                } param_formais PONTO_E_VIRGULA {
-                    nivel_lexico++;
-                } bloco;
+                    simbolo_t *simb = insere_ts(ts, token.nome, CAT_PROC, nivel_lexico);
+                    sprintf(simb->params.rot, "p%d", rotcounter_proc++);
+
+                    geraCodigo(out, simb->params.rot, "ENPR %d", (nivel_lexico+1));
+                } param_formais PONTO_E_VIRGULA bloco {
+                    geraCodigo(out, NULL, "RTPR %d, %d", (nivel_lexico+1), 0);
+                };
 
 param_formais:  ABRE_PARENTESES lista_params FECHA_PARENTESES | ;
 
@@ -90,23 +108,28 @@ comando_composto: T_BEGIN comandos T_END {
                     if (removidos > 0) {
                         geraCodigo(out, NULL, "DMEM %d", removidos);
                     }
-
-                    nivel_lexico--;
                 };
 
 comandos:       comandos PONTO_E_VIRGULA comando | comando;
 
-comando:        atribuicao | ;
+comando:        NUMERO DOIS_PONTOS comando_sem_rotulo | comando_sem_rotulo;
 
-atribuicao:     IDENT {
-                    l_elem = busca_ts(ts, token.nome, CAT_VS, nivel_lexico);
+comando_sem_rotulo:
+                comando_composto |
+                IDENT { strncpy(l_token, token.nome, TAM_TOKEN); } atr_ou_chamada |
+                ;
+
+atr_ou_chamada: ATRIBUICAO expressao atribuicao |
+                lista_parametros PONTO_E_VIRGULA chamada_de_procedimento;
+
+atribuicao:     {
+                    simbolo_t *l_elem = busca_ts(ts, l_token, CAT_VS, nivel_lexico);
+                    tipos_var e = (tipos_var) pilha_pop(E);
 
                     if (l_elem == NULL) {
-                        yyerror("variável '%s' não foi definida", token.nome);
+                        yyerror("variável '%s' não foi definida", l_token);
                         YYERROR;
                     }
-                } ATRIBUICAO expressao {
-                    tipos_var e = (tipos_var) pilha_pop(E);
 
                     if (l_elem->params.tipo != e) {
                         yyerror("expressão retornou tipo '%s' e não pode ser atribuída à variável '%s' do tipo '%s'",
@@ -115,23 +138,57 @@ atribuicao:     IDENT {
                     }
 
                     geraCodigo(out, NULL, "ARMZ %d, %d", l_elem->nivel_lexico, l_elem->params.desloc);
-                };
+                }
 
-expressao:      expressao OPERADOR_DISJ { pilha_push(O, (void*) op); } termo {
-                    tipos_var e = (tipos_var) pilha_pop(E);
+expressao:      expressao_simples RELACAO { pilha_push(R, (void*) rel); } expressao_simples {
+                    tipos_var ea = (tipos_var) pilha_pop(ES);
+                    tipos_var eb = (tipos_var) pilha_pop(ES);
+                    tipos_rel rel = (tipos_rel) pilha_pop(R);
+
+                    if (rel == REL_IGUAL || rel == REL_DIFERENTE) {
+                        if (ea != eb) {
+                            yyerror("relação '%s' não pode operar sobre '%s' e '%s'",
+                                REL_STR(rel), TIPO_STR(ea), TIPO_STR(eb));
+                            YYERROR;
+                        }
+                    }
+                    else {
+                        if (ea != TIPO_INTEGER || ea != eb) {
+                            yyerror("relação '%s' não pode operar sobre '%s' e '%s'",
+                                REL_STR(rel), TIPO_STR(ea), TIPO_STR(eb));
+                            YYERROR;
+                        }
+                    }
+
+                    switch (rel) {
+                        case REL_IGUAL:         geraCodigo(out, NULL, "CMIG"); break;
+                        case REL_DIFERENTE:     geraCodigo(out, NULL, "CMDG"); break;
+                        case REL_MENOR:         geraCodigo(out, NULL, "CMME"); break;
+                        case REL_MENOR_IGUAL:   geraCodigo(out, NULL, "CMEG"); break;
+                        case REL_MAIOR:         geraCodigo(out, NULL, "CMMA"); break;
+                        case REL_MAIOR_IGUAL:   geraCodigo(out, NULL, "CMAG"); break;
+                        default:      yyerror("relação inválida ('%s')", REL_STR(op)); YYERROR; break;
+                    }
+
+                    pilha_push(E, (void*) TIPO_BOOLEAN);
+                } |
+                expressao_simples { pilha_push(E, pilha_pop(ES)); };
+
+expressao_simples: expressao_simples OPERADOR_DISJ { pilha_push(O, (void*) op); } termo {
+                    tipos_var es = (tipos_var) pilha_pop(ES);
                     tipos_var t = (tipos_var) pilha_pop(T);
                     tipos_op op = (tipos_op) pilha_pop(O);
 
                     switch (op) {
-                        case OP_SOMA: CHECK_TYPE(e, t, TIPO_INTEGER); geraCodigo(out, NULL, "SOMA"); break;
-                        case OP_SUBT: CHECK_TYPE(e, t, TIPO_INTEGER); geraCodigo(out, NULL, "SUBT"); break;
-                        case OP_DISJ: CHECK_TYPE(e, t, TIPO_BOOLEAN); geraCodigo(out, NULL, "DISJ"); break;
+                        case OP_SOMA: CHECK_TYPE(es, t, TIPO_INTEGER); geraCodigo(out, NULL, "SOMA"); break;
+                        case OP_SUBT: CHECK_TYPE(es, t, TIPO_INTEGER); geraCodigo(out, NULL, "SUBT"); break;
+                        case OP_DISJ: CHECK_TYPE(es, t, TIPO_BOOLEAN); geraCodigo(out, NULL, "DISJ"); break;
                         default:      yyerror("operador inválido ('%s')", OP_STR(op)); YYERROR; break;
                     }
 
-                    pilha_push(E, (void*) e);
+                    pilha_push(ES, (void*) es);
                 } |
-                termo { pilha_push(E, pilha_pop(T)); };
+                termo { pilha_push(ES, pilha_pop(T)); };
 
 termo:          termo OPERADOR_CONJ { pilha_push(O, (void*) op); } fator {
                     tipos_var t = (tipos_var) pilha_pop(T);
@@ -174,6 +231,21 @@ fator:          ABRE_PARENTESES expressao { pilha_push(F, pilha_pop(E)); } FECHA
                     geraCodigo(out, NULL, "CRCT %d", 0);
                 };
 
+lista_expressoes: expressao VIRGULA lista_expressoes | expressao;
+
+lista_parametros: ABRE_PARENTESES lista_expressoes FECHA_PARENTESES | ;
+
+chamada_de_procedimento: {
+                    simbolo_t *proc = busca_ts(ts, l_token, CAT_PROC, nivel_lexico);
+
+                    if (proc == NULL) {
+                        yyerror("procedimento '%s' não foi definido", l_token);
+                        YYERROR;
+                    }
+
+                    geraCodigo(out, NULL, "CHPR %s, %d", proc->params.rot, nivel_lexico);
+                };
+
 %%
 
 int main(int argc, char* argv[]) {
@@ -199,19 +271,27 @@ int main(int argc, char* argv[]) {
     }
 
     nivel_lexico = 0;
+    rotcounter_proc = 0;
+    rotcounter_cond = 0;
+    rotcounter_loop = 0;
+
     ts = inicializa_ts();
 
     E = pilha_inicializa();
+    ES = pilha_inicializa();
     T = pilha_inicializa();
     F = pilha_inicializa();
     O = pilha_inicializa();
+    R = pilha_inicializa();
 
     err = yyparse();
 
     pilha_destroi(E);
+    pilha_destroi(ES);
     pilha_destroi(T);
     pilha_destroi(F);
     pilha_destroi(O);
+    pilha_destroi(R);
 
     destroi_ts(ts);
 

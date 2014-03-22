@@ -76,6 +76,13 @@ false { return T_FALSE; }
 \/    { op = OP_DIVI; return OPERADOR_CONJ; }
 {and} { op = OP_CONJ; return OPERADOR_CONJ; }
 
+\=   { rel = REL_IGUAL;         return RELACAO; }
+\<\> { rel = REL_DIFERENTE;     return RELACAO; }
+\<   { rel = REL_MENOR;         return RELACAO; }
+\<\= { rel = REL_MENOR_IGUAL;   return RELACAO; }
+\>   { rel = REL_MAIOR;         return RELACAO; }
+\>\= { rel = REL_MAIOR_IGUAL;   return RELACAO; }
+
 {ident} { return IDENT; }
 
 {numero} { return NUMERO; }

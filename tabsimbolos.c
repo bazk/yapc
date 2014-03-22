@@ -88,9 +88,13 @@ int define_tipo_ts(tab_simbolos_t *ts, char *token_tipo) {
 }
 
 simbolo_t *busca_ts(tab_simbolos_t *ts, char *nome, categorias_simb cat, unsigned int nivel_lexico) {
+#ifdef DEBUG_TS
+    printf("busca_ts(%s, %s, %d)\n", nome, cat_str(cat), nivel_lexico);
+#endif
+
     for (int i = (ts->it-1); i >= 0; i--) {
         if ( (ts->simbolos[i].cat == cat) &&
-             (ts->simbolos[i].nivel_lexico == nivel_lexico) &&
+             (ts->simbolos[i].nivel_lexico <= nivel_lexico) &&
              (strncmp(ts->simbolos[i].nome, nome, TAM_TOKEN) == 0) ) {
             return &ts->simbolos[i];
         }

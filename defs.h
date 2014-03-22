@@ -30,4 +30,18 @@ static inline char *OP_STR(tipos_op o) {
     return strings[o];
 }
 
+typedef enum {
+    REL_IGUAL = 0,
+    REL_DIFERENTE,
+    REL_MENOR,
+    REL_MENOR_IGUAL,
+    REL_MAIOR,
+    REL_MAIOR_IGUAL
+} tipos_rel;
+
+static inline char *REL_STR(tipos_rel o) {
+    static char *strings[] = {"=", "<>", "<", "<=", ">", ">="};
+    return strings[o];
+}
+
 #endif

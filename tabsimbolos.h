@@ -13,6 +13,9 @@ typedef union {
         int desloc;
         tipos_var tipo;
     };
+    struct {
+        char rot[3];
+    };
 } params_t;
 
 typedef struct {
