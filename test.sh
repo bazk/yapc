@@ -20,7 +20,18 @@ function dotest() {
     test=$1
     echo -n "testing ${test}..."
 
-    ./executa.sh tests/${test} >${outdir}/${test}.out 2>${outdir}/${test}.err
+    infile="/dev/null"
+    if grep "read" tests/${test} >/dev/null; then
+        if [ ! -f tests/${test/.pas/.in} ]; then
+            fail
+            echo "error: missing input file"
+            return 1
+        fi
+
+        infile="tests/${test/.pas/.in}"
+    fi
+
+    ./executa.sh tests/${test} < ${infile} >${outdir}/${test}.out 2>${outdir}/${test}.err
     ret=$?
 
     echo ${test} | egrep "^[0-9]+-fail" >/dev/null
