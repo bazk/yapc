@@ -14,7 +14,7 @@ typedef union {
         tipos_var tipo;
     };
     struct {
-        char rot[3];
+        char rot[4];
     };
 } params_t;
 

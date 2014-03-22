@@ -24,6 +24,7 @@ char l_token[TAM_TOKEN];
 
 pilha_t *ES, *E, *T, *F;
 pilha_t *R, *O;
+pilha_t *pilha_rot_loop;
 
 FILE *out;
 

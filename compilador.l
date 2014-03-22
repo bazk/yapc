@@ -54,6 +54,10 @@ true { return T_TRUE; }
 
 false { return T_FALSE; }
 
+while { return WHILE; }
+
+do { return DO; }
+
 := { return ATRIBUICAO; }
 
 \; { return PONTO_E_VIRGULA; }

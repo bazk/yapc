@@ -63,7 +63,7 @@ void geraCodigo(FILE *fp, const char* label, const char* format, ...) {
 
 pilha_t *pilha_inicializa() {
     pilha_t *p = (pilha_t*) malloc(sizeof(pilha_t));
-    p->items = (void**) malloc(PILHA_CHUNK_SIZE * sizeof(void*));
+    p->items = (int*) malloc(PILHA_CHUNK_SIZE * sizeof(int));
     p->it = 0;
     return p;
 }
@@ -73,18 +73,18 @@ void pilha_destroi(pilha_t *p) {
     free(p);
 }
 
-void pilha_push(pilha_t *p, void *i) {
+void pilha_push(pilha_t *p, int i) {
     p->items[p->it] = i;
     p->it++;
 
     if ((p->it % PILHA_CHUNK_SIZE) == 0) {
-        p->items = (void**) realloc(
+        p->items = (int*) realloc(
                 p->items,
-                (p->it + TS_CHUNK_SIZE) * sizeof(void*));
+                (p->it + TS_CHUNK_SIZE) * sizeof(int));
     }
 }
 
-void *pilha_pop(pilha_t *p) {
+int pilha_pop(pilha_t *p) {
     if (p->it == 0) {
         fprintf(stderr, "warning: pop empty stack\n");
         return NULL;
@@ -93,7 +93,7 @@ void *pilha_pop(pilha_t *p) {
     return p->items[--p->it];
 }
 
-void *pilha_peek(pilha_t *p) {
+int pilha_peek(pilha_t *p) {
     if (p->it == 0) {
         fprintf(stderr, "warning: peeking empty stack\n");
         return NULL;
