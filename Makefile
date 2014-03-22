@@ -23,4 +23,4 @@ tabsimbolos.o: tabsimbolos.c tabsimbolos.h
 	gcc $(CFLAGS) -c tabsimbolos.c -o tabsimbolos.o
 
 clean:
-	rm -f compilador lex.yy.c compilador.tab.* compilador.o
+	rm -f compilador lex.yy.c compilador.tab.* compilador.o tabsimbolos.o utils.o
