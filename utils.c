@@ -85,7 +85,7 @@ void geraCodigo(FILE *fp, const char* label, const char* format, ...) {
         fprintf(fp, "%s: ", label);
     }
     else {
-        fprintf(fp, "    ");
+        fprintf(fp, "     ");
     }
 
     vfprintf(fp, format, args);
@@ -120,7 +120,7 @@ void pilha_push(pilha_t *p, int i) {
 int pilha_pop(pilha_t *p) {
     if (p->it == 0) {
         fprintf(stderr, "warning: pop empty stack\n");
-        return NULL;
+        return -1;
     }
 
     return p->items[--p->it];
@@ -129,7 +129,7 @@ int pilha_pop(pilha_t *p) {
 int pilha_peek(pilha_t *p) {
     if (p->it == 0) {
         fprintf(stderr, "warning: peeking empty stack\n");
-        return NULL;
+        return -1;
     }
 
     return p->items[p->it];

@@ -37,7 +37,11 @@ void imprime_ts(tab_simbolos_t *ts) {
             fprintf(stderr, "tipo=%s", TIPO_STR(ts->simbolos[i].params.tipo));
         }
         else if (ts->simbolos[i].cat == CAT_PROC) {
-            fprintf(stderr, "rot=%s, ", ts->simbolos[i].params.rot);
+            fprintf(stderr, "rot=%s", ts->simbolos[i].params.rot);
+        }
+        else if (ts->simbolos[i].cat == CAT_PARAM) {
+            fprintf(stderr, "desloc=%d, ", ts->simbolos[i].params.desloc);
+            fprintf(stderr, "tipo=%s", TIPO_STR(ts->simbolos[i].params.tipo));
         }
 
         fprintf(stderr, "}\n");
@@ -96,13 +100,27 @@ int define_tipo_ts(tab_simbolos_t *ts, char *token_tipo, categorias_simb cat) {
     return 0;
 }
 
+void define_desloc_params_ts(tab_simbolos_t *ts) {
+    int i = (ts->it-1), j = 0;
+
+    while ((i >= 0) && (ts->simbolos[i].cat == CAT_PARAM)) {
+        ts->simbolos[i].params.desloc = -4 - j++;
+        i--;
+    }
+
+#ifdef DEBUG_TS
+    fprintf(stderr, "define_desloc_params_ts()\n");
+    imprime_ts(ts);
+#endif
+}
+
 simbolo_t *busca_ts(tab_simbolos_t *ts, char *nome, categorias_simb cat, unsigned int nivel_lexico) {
 #ifdef DEBUG_TS
-    fprintf(stderr, "busca_ts(%s, %s, %d)\n", nome, CAT_STR(cat), nivel_lexico);
+    fprintf(stderr, "busca_ts(%s, %d, %d)\n", nome, cat, nivel_lexico);
 #endif
 
     for (int i = (ts->it-1); i >= 0; i--) {
-        if ( (ts->simbolos[i].cat == cat) &&
+        if ( ((ts->simbolos[i].cat & cat) != 0) &&
              (ts->simbolos[i].nivel_lexico <= nivel_lexico) &&
              (strncmp(ts->simbolos[i].nome, nome, TAM_TOKEN) == 0) ) {
             return &ts->simbolos[i];
@@ -112,20 +130,21 @@ simbolo_t *busca_ts(tab_simbolos_t *ts, char *nome, categorias_simb cat, unsigne
     return NULL;
 }
 
-unsigned int remove_nivel_ts(tab_simbolos_t *ts, unsigned int nivel_lexico) {
+unsigned int remove_nivel_ts(tab_simbolos_t *ts, categorias_simb cat, unsigned int nivel_lexico) {
     int i = (ts->it-1), count = 0;
 
     while ((i >= 0) && (ts->simbolos[i].nivel_lexico >= nivel_lexico)) {
-        if (ts->simbolos[i].cat == CAT_VS)
-            count++;
+        if ((ts->simbolos[i].cat & cat) == 0)
+            break;
 
+        count++;
         i--;
     }
 
     ts->it = ++i;
 
 #ifdef DEBUG_TS
-    fprintf(stderr, "remove_nivel_ts(%d)\n", nivel_lexico);
+    fprintf(stderr, "remove_nivel_ts(%d, %d)\n", cat, nivel_lexico);
     imprime_ts(ts);
 #endif
 

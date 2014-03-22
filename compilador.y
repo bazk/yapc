@@ -19,6 +19,9 @@
         REL_STR(rel), TIPO_STR(a), TIPO_STR(b)); \
     YYERROR; }
 
+int rotcounter = 0;
+#define NOVO_ROTULO rotcounter++
+
 extern int yylex();
 %}
 
@@ -44,29 +47,29 @@ extern int yylex();
 programa:       { geraCodigo(out, NULL, "INPP"); }
                 PROGRAM IDENT
                 ABRE_PARENTESES lista_idents FECHA_PARENTESES PONTO_E_VIRGULA
-                bloco_principal PONTO
+                bloco PONTO
                 { geraCodigo(out, NULL, "PARA"); };
 
 lista_idents:   lista_idents VIRGULA IDENT |
                 IDENT;
 
-bloco_principal: parte_declara_vars
-                { geraCodigo(out, NULL, "DSVS main"); }
-                declara_procs
-                { geraCodigo(out, "main", "NADA"); }
-                comando_composto {
-                    unsigned int removidos = remove_nivel_ts(ts, nivel_lexico);
-
-                    if (removidos > 0) {
-                        geraCodigo(out, NULL, "DMEM %d", removidos);
-                    }
-                };
-
 bloco:          { nivel_lexico++; }
                 parte_declara_vars
+                {
+                    int rot = NOVO_ROTULO;
+                    pilha_push(pilha_rot_jump, rot);
+                    geraCodigo(out, NULL, "DSVS R%02d", rot);
+                }
                 declara_procs
+                {
+                    char label[4];
+                    sprintf(label, "R%02d", pilha_pop(pilha_rot_jump));
+                    geraCodigo(out, label, "NADA");
+                }
                 comando_composto {
-                    unsigned int removidos = remove_nivel_ts(ts, nivel_lexico);
+                    remove_nivel_ts(ts, CAT_PROC, nivel_lexico);
+
+                    unsigned int removidos = remove_nivel_ts(ts, CAT_VS, nivel_lexico);
 
                     if (removidos > 0) {
                         geraCodigo(out, NULL, "DMEM %d", removidos);
@@ -102,11 +105,15 @@ declara_procs:  declara_proc PONTO_E_VIRGULA declara_procs | %empty;
 
 declara_proc:   PROCEDURE IDENT {
                     simbolo_t *simb = insere_ts(ts, token.nome, CAT_PROC, nivel_lexico);
-                    sprintf(simb->params.rot, "p%d", rotcounter_proc++);
+                    sprintf(simb->params.rot, "R%02d", NOVO_ROTULO);
 
                     geraCodigo(out, simb->params.rot, "ENPR %d", nivel_lexico+1);
-                } param_formais PONTO_E_VIRGULA bloco {
-                    geraCodigo(out, NULL, "RTPR %d, %d", (nivel_lexico+1), 0);
+                } param_formais {
+                    define_desloc_params_ts(ts);
+                } PONTO_E_VIRGULA bloco {
+                    unsigned int removidos = remove_nivel_ts(ts, CAT_PARAM, nivel_lexico+1);
+
+                    geraCodigo(out, NULL, "RTPR %d, %d", nivel_lexico+1, removidos);
                 };
 
 param_formais:  ABRE_PARENTESES lista_params FECHA_PARENTESES | %empty;
@@ -117,9 +124,16 @@ param:          lista_param_vars DOIS_PONTOS param_tipo;
 
 lista_param_vars: param_var VIRGULA lista_param_vars | param_var;
 
-param_var:      IDENT;
+param_var:      IDENT {
+                    insere_ts(ts, token.nome, CAT_PARAM, nivel_lexico+1);
+                };
 
-param_tipo:     IDENT;
+param_tipo:     IDENT {
+                    if (define_tipo_ts(ts, token.nome, CAT_PARAM) != 0) {
+                        yyerror("'%s' não é tipo de variável válido", token.nome);
+                        YYERROR;
+                    }
+                };
 
 comando_composto: T_BEGIN comandos T_END;
 
@@ -140,7 +154,7 @@ atr_ou_chamada: ATRIBUICAO atribuicao |
                 chamada_de_procedimento;
 
 atribuicao:     expressao {
-                    simbolo_t *l_elem = busca_ts(ts, l_token, CAT_VS, nivel_lexico);
+                    simbolo_t *l_elem = busca_ts(ts, l_token, CAT_VS | CAT_PARAM, nivel_lexico);
                     tipos_var e = (tipos_var) pilha_pop(E);
 
                     if (l_elem == NULL) {
@@ -225,7 +239,7 @@ termo:          termo OPERADOR_CONJ { pilha_push(O, op); } fator {
 
 fator:          ABRE_PARENTESES expressao { pilha_push(F, pilha_pop(E)); } FECHA_PARENTESES |
                 IDENT {
-                    simbolo_t *simb = busca_ts(ts, token.nome, CAT_VS, nivel_lexico);
+                    simbolo_t *simb = busca_ts(ts, token.nome, CAT_VS | CAT_PARAM, nivel_lexico);
 
                     if (simb == NULL) {
                         yyerror("variável '%s' não foi definida", token.nome);
@@ -280,7 +294,7 @@ lista_variaveis_read:
                 lista_variaveis_read VIRGULA variavel_read | variavel_read;
 
 variavel_read:  IDENT {
-                    simbolo_t *simb = busca_ts(ts, token.nome, CAT_VS, nivel_lexico);
+                    simbolo_t *simb = busca_ts(ts, token.nome, CAT_VS | CAT_PARAM, nivel_lexico);
 
                     if (simb == NULL) {
                         yyerror("variável '%s' não foi definida", token.nome);
@@ -319,12 +333,13 @@ expressao_proc: expressao { pilha_pop(E); };
 
 comando_repetitivo:
                 WHILE {
-                    char label[4];
-                    sprintf(label, "l%d", rotcounter_loop);
+                    int rot = NOVO_ROTULO;
 
+                    char label[4];
+                    sprintf(label, "R%02d", rot);
                     geraCodigo(out, label, "NADA");
 
-                    pilha_push(pilha_rot_loop, (int) rotcounter_loop);
+                    pilha_push(pilha_rot_loop, rot);
                 } expressao {
                     tipos_var e = (tipos_var) pilha_pop(E);
 
@@ -333,22 +348,25 @@ comando_repetitivo:
                         YYERROR;
                     }
 
-                    geraCodigo(out, NULL, "DSVF f%d", rotcounter_loop++);
+                    int rot = NOVO_ROTULO;
+                    geraCodigo(out, NULL, "DSVF R%02d", rot);
+                    pilha_push(pilha_rot_loop, rot);
                 } DO comando_sem_rotulo {
-                    int loop_rot = (int) pilha_pop(pilha_rot_loop);
+                    int exit_rot = pilha_pop(pilha_rot_loop);
+                    int loop_rot = pilha_pop(pilha_rot_loop);
 
-                    geraCodigo(out, NULL, "DSVS l%d", loop_rot);
+                    geraCodigo(out, NULL, "DSVS R%02d", loop_rot);
 
                     char label[4];
-                    sprintf(label, "f%d", loop_rot);
+                    sprintf(label, "R%02d", exit_rot);
                     geraCodigo(out, label, "NADA");
                 };
 
 comando_condicional: if_then else {
-                    int cond_rot = (int) pilha_pop(pilha_rot_cond);
+                    int exit_rot = pilha_pop(pilha_rot_cond);
 
                     char label[4];
-                    sprintf(label, "s%d", cond_rot);
+                    sprintf(label, "R%02d", exit_rot);
                     geraCodigo(out, label, "NADA");
                 };
 
@@ -360,19 +378,23 @@ if_then:        IF expressao {
                         YYERROR;
                     }
 
-                    pilha_push(pilha_rot_cond, (int) rotcounter_cond);
-                    geraCodigo(out, NULL, "DSVF e%d", rotcounter_cond);
-                    rotcounter_cond++;
-                } THEN comando_sem_rotulo {
-                    int cond_rot = (int) pilha_pop(pilha_rot_cond);
+                    int exit_rot = NOVO_ROTULO, else_rot = NOVO_ROTULO;
 
-                    geraCodigo(out, NULL, "DSVS s%d", cond_rot);
+                    pilha_push(pilha_rot_cond, else_rot);
+                    pilha_push(pilha_rot_cond, exit_rot);
+
+                    geraCodigo(out, NULL, "DSVF R%02d", else_rot);
+                } THEN comando_sem_rotulo {
+                    int exit_rot = pilha_pop(pilha_rot_cond);
+                    int else_rot = pilha_pop(pilha_rot_cond);
+
+                    geraCodigo(out, NULL, "DSVS R%02d", exit_rot);
 
                     char label[4];
-                    sprintf(label, "e%d", cond_rot);
+                    sprintf(label, "R%02d", else_rot);
                     geraCodigo(out, label, "NADA");
 
-                    pilha_push(pilha_rot_cond, cond_rot);
+                    pilha_push(pilha_rot_cond, exit_rot);
                 };
 
 else:           ELSE comando_sem_rotulo |
@@ -402,7 +424,7 @@ int main(int argc, char* argv[]) {
         exit(-3);
     }
 
-    nivel_lexico = 0;
+    nivel_lexico = -1;
     rotcounter_proc = 0;
     rotcounter_cond = 0;
     rotcounter_loop = 0;
@@ -415,6 +437,7 @@ int main(int argc, char* argv[]) {
     F = pilha_inicializa();
     O = pilha_inicializa();
     R = pilha_inicializa();
+    pilha_rot_jump = pilha_inicializa();
     pilha_rot_loop = pilha_inicializa();
     pilha_rot_cond = pilha_inicializa();
 
@@ -426,6 +449,7 @@ int main(int argc, char* argv[]) {
     pilha_destroi(F);
     pilha_destroi(O);
     pilha_destroi(R);
+    pilha_destroi(pilha_rot_jump);
     pilha_destroi(pilha_rot_loop);
     pilha_destroi(pilha_rot_cond);
 
