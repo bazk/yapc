@@ -36,6 +36,7 @@ extern int yylex();
 %token RELACAO
 %token WHILE DO
 %token IF THEN ELSE
+%token WRITE
 
 %%
 
@@ -90,7 +91,7 @@ var:            IDENT {
                 };
 
 tipo:           IDENT {
-                    if (define_tipo_ts(ts, token.nome) != 0) {
+                    if (define_tipo_ts(ts, token.nome, CAT_VS) != 0) {
                         yyerror("'%s' não é tipo de variável válido", token.nome);
                         YYERROR;
                     }
@@ -102,7 +103,7 @@ declara_proc:   PROCEDURE IDENT {
                     simbolo_t *simb = insere_ts(ts, token.nome, CAT_PROC, nivel_lexico);
                     sprintf(simb->params.rot, "p%d", rotcounter_proc++);
 
-                    geraCodigo(out, simb->params.rot, "ENPR %d", (nivel_lexico+1));
+                    geraCodigo(out, simb->params.rot, "ENPR %d", nivel_lexico+1);
                 } param_formais PONTO_E_VIRGULA bloco {
                     geraCodigo(out, NULL, "RTPR %d, %d", (nivel_lexico+1), 0);
                 };
@@ -129,6 +130,7 @@ comando_sem_rotulo:
                 comando_composto |
                 comando_repetitivo |
                 comando_condicional |
+                write |
                 IDENT { strncpy(l_token, token.nome, TAM_TOKEN); } atr_ou_chamada |
                 %empty;
 
@@ -244,29 +246,47 @@ fator:          ABRE_PARENTESES expressao { pilha_push(F, pilha_pop(E)); } FECHA
                     geraCodigo(out, NULL, "CRCT %d", 0);
                 };
 
-lista_expressoes: expressao VIRGULA lista_expressoes | expressao;
+write:          WRITE lista_parametros_write;
 
-lista_parametros: ABRE_PARENTESES lista_expressoes FECHA_PARENTESES | %empty;
+lista_parametros_write:
+                ABRE_PARENTESES lista_expressoes_write FECHA_PARENTESES |
+                ABRE_PARENTESES FECHA_PARENTESES |
+                %empty;
 
-chamada_de_procedimento: lista_parametros {
-                    if (strncmp(l_token, "writeln", TAM_TOKEN) == 0) {
-                        geraCodigo(out, NULL, "IMPR");
+lista_expressoes_write:
+                lista_expressoes_write VIRGULA expressao_write | expressao_write;
+
+expressao_write: expressao {
+                    tipos_var e = (tipos_var) pilha_pop(E);
+
+                    if (e != TIPO_INTEGER) {
+                        yyerror("procedimento 'write' não pode operar sobre '%s'", TIPO_STR(e));
+                        YYERROR;
                     }
-                    else if (strncmp(l_token, "write", TAM_TOKEN) == 0) {
-                        yywarning("procedimento 'write' não é implementado nesta linguagem, assumindo 'writeln'");
-                        geraCodigo(out, NULL, "IMPR");
-                    }
-                    else {
-                        simbolo_t *proc = busca_ts(ts, l_token, CAT_PROC, nivel_lexico);
 
-                        if (proc == NULL) {
-                            yyerror("procedimento '%s' não foi definido", l_token);
-                            YYERROR;
-                        }
-
-                        geraCodigo(out, NULL, "CHPR %s, %d", proc->params.rot, nivel_lexico);
-                    }
+                    geraCodigo(out, NULL, "IMPR");
                 };
+
+chamada_de_procedimento:
+                lista_parametros {
+                    simbolo_t *proc = busca_ts(ts, l_token, CAT_PROC, nivel_lexico);
+
+                    if (proc == NULL) {
+                        yyerror("procedimento '%s' não foi definido", l_token);
+                        YYERROR;
+                    }
+
+                    geraCodigo(out, NULL, "CHPR %s, %d", proc->params.rot, nivel_lexico);
+                };
+
+lista_parametros:
+                ABRE_PARENTESES lista_expressoes FECHA_PARENTESES |
+                ABRE_PARENTESES FECHA_PARENTESES |
+                 %empty;
+
+lista_expressoes: lista_expressoes VIRGULA expressao_proc | expressao_proc;
+
+expressao_proc: expressao { tipos_var e = (tipos_var) pilha_pop(E); };
 
 comando_repetitivo:
                 WHILE {

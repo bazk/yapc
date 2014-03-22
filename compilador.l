@@ -64,6 +64,11 @@ then { return THEN; }
 
 else { return ELSE; }
 
+write { yywarning("procedimento 'write' não é implementado nesta linguagem, assumindo 'writeln'");
+        return WRITE; }
+
+writeln { return WRITE; }
+
 := { return ATRIBUICAO; }
 
 \; { return PONTO_E_VIRGULA; }
