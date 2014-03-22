@@ -2,7 +2,7 @@
      AMEM 2
      AMEM 3
      DSVS R00
-R00: NADA 
+R00: NADA
      LEIT
      ARMZ 0, 0
      CRCT 0
@@ -11,7 +11,7 @@ R00: NADA
      ARMZ 0, 3
      CRCT 1
      ARMZ 0, 1
-R01: NADA 
+R01: NADA
      CRVL 0, 1
      CRVL 0, 0
      CMEG
@@ -29,7 +29,7 @@ R01: NADA
      SOMA
      ARMZ 0, 1
      DSVS R01
-R02: NADA 
+R02: NADA
      CRVL 0, 0
      IMPR
      CRVL 0, 2

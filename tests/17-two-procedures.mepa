@@ -1,10 +1,10 @@
      INPP
      AMEM 2
      DSVS R00
-R01: ENPR 1 
+R01: ENPR 1
      AMEM 1
      DSVS R02
-R02: NADA 
+R02: NADA
      CRVL 1, -4
      CRVL 1, -4
      MULT
@@ -19,13 +19,13 @@ R02: NADA
      IMPR
      DMEM 1
      RTPR 1, 1
-R03: ENPR 1 
+R03: ENPR 1
      AMEM 1
      DSVS R04
-R05: ENPR 2 
+R05: ENPR 2
      AMEM 1
      DSVS R06
-R06: NADA 
+R06: NADA
      CRVL 0, 0
      CRVL 1, 0
      SOMA
@@ -38,7 +38,7 @@ R06: NADA
      ARMZ 0, 0
      DMEM 1
      RTPR 2, 1
-R04: NADA 
+R04: NADA
      CRVL 1, -4
      CRCT 1
      SOMA
@@ -51,7 +51,7 @@ R04: NADA
      CHPR R01, 1
      DMEM 1
      RTPR 1, 1
-R00: NADA 
+R00: NADA
      CRCT 1
      ARMZ 0, 0
      CRCT 3
