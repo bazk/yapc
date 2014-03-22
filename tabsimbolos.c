@@ -38,7 +38,6 @@ void imprime_ts(tab_simbolos_t *ts) {
         }
         else if (ts->simbolos[i].cat == CAT_PROC) {
             fprintf(stderr, "rot=%s, ", ts->simbolos[i].params.rot);
-            fprintf(stderr, "num_args=%d", ts->simbolos[i].params.num_args);
         }
 
         fprintf(stderr, "}\n");
