@@ -13,6 +13,15 @@ green="\e[32m"
 bold="\e[1m"
 reset="\e[0m"
 
+function run() {
+    as --32 mepa.s -o mepa.o && \
+    ld -m elf_i386 -L/usr/lib32 mepa.o -o mepa -lc -dynamic-linker /lib/ld-linux.so.2 && \
+    ./mepa && \
+    return 0
+
+    return 1
+}
+
 function success() {
     echo -e " ${green}[done]${reset}"
 }
@@ -36,20 +45,24 @@ function dotest() {
         infile="tests/${test/.pas/.in}"
     fi
 
-    ./executa.sh tests/${test} < ${infile} >${outdir}/${test}.out 2>${outdir}/${test}.err
+    ./compilador tests/${test} >${outdir}/${test}.compile-out 2>&1
     ret=$?
 
-    echo ${test} | egrep "^[0-9]+-fail" >/dev/null
-    should=$?
+    if echo ${test} | egrep "^[0-9]+-fail" >/dev/null; then
+        if [ ${ret} -eq 0 ]; then
+            fail
+            echo "error: compiling did not failed as it was supposed to"
+            return 1
+        else
+            success
+            return 0
+        fi
+    fi
 
-    if [ $should -eq 0 -a ${ret} -eq 0 ]; then
-        fail
-        echo "error: compiling did not failed as it was supposed to"
-        return 1
-    elif [ ${should} -ne 0 -a  ${ret} -ne 0 ]; then
+    if [ ${ret} -ne 0 ]; then
         fail
         echo "error: compiling failed with return code = ${ret}"
-        cat ${outdir}/${test}.err
+        cat ${outdir}/${test}.compile-out
         echo
         return 1
     fi
@@ -62,6 +75,17 @@ function dotest() {
             echo
             return 2
         fi
+    fi
+
+    run < ${infile} >${outdir}/${test}.out 2>${outdir}/${test}.err
+    ret=$?
+
+    if [ ${ret} -ne 0 ]; then
+        fail
+        echo "error: execution failed"
+        cat ${outdir}/${test}.err
+        echo
+        return 1
     fi
 
     if [ -f "tests/${test/.pas/.out}" ]; then
@@ -77,6 +101,13 @@ function dotest() {
     success
     return 0
 }
+
+make
+ret=$?
+if [ $ret -ne 0 ]; then
+    echo "error: failure at building the compiler"
+    exit $ret
+fi
 
 begin=$(date +%s)
 count=0
