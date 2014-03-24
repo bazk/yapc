@@ -36,4 +36,6 @@ unsigned int rotcounter_proc;
 unsigned int rotcounter_cond;
 unsigned int rotcounter_loop;
 
+int single_var;
+
 #endif

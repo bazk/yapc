@@ -209,6 +209,7 @@ expressao:      expressao_simples RELACAO { pilha_push(R, rel); } expressao_simp
                     }
 
                     pilha_push(E, TIPO_BOOLEAN);
+                    single_var = 0;
                 } |
                 expressao_simples { pilha_push(E, pilha_pop(ES)); };
 
@@ -225,6 +226,7 @@ expressao_simples: expressao_simples OPERADOR_DISJ { pilha_push(O, op); } termo 
                     }
 
                     pilha_push(ES, es);
+                    single_var = 0;
                 } |
                 termo { pilha_push(ES, pilha_pop(T)); };
 
@@ -241,6 +243,7 @@ termo:          termo OPERADOR_CONJ { pilha_push(O, op); } fator {
                     }
 
                     pilha_push(T, t);
+                    single_var = 0;
                 } |
                 fator { pilha_push(T, pilha_pop(F)); };
 
@@ -297,14 +300,17 @@ fator:          ABRE_PARENTESES expressao { pilha_push(F, pilha_pop(E)); } FECHA
                 NUMERO {
                     pilha_push(F, TIPO_INTEGER);
                     geraCodigo(out, NULL, "CRCT %s", token.nome);
+                    single_var = 0;
                 } |
                 T_TRUE {
                     pilha_push(F, TIPO_BOOLEAN);
                     geraCodigo(out, NULL, "CRCT %d", 1);
+                    single_var = 0;
                 } |
                 T_FALSE {
                     pilha_push(F, TIPO_BOOLEAN);
                     geraCodigo(out, NULL, "CRCT %d", 0);
+                    single_var = 0;
                 };
 
 write:          WRITE lista_parametros_write;
@@ -393,7 +399,7 @@ lista_parametros:
 
 lista_exp_proc:  lista_exp_proc VIRGULA expressao_proc | expressao_proc;
 
-expressao_proc: expressao {
+expressao_proc: { single_var = 1; } expressao {
                     tipos_var e = (tipos_var) pilha_pop(E);
                     int param_desloc = pilha_pop(pilha_cham_proc);
                     int proc_id = pilha_pop(pilha_cham_proc);
@@ -413,12 +419,11 @@ expressao_proc: expressao {
                         YYERROR;
                     }
 
-                    // TODO: verify if passed a single variable by ref
-                    // if (param->params.by != BY_VAR) {
-                    //     yyerror("parametro número %d do procedimento '%s' deve ser passado por referência",
-                    //         param_desloc, proc->nome);
-                    //     YYERROR;
-                    // }
+                    if ((param->params.by == BY_REF) && (single_var != 1)) {
+                        yyerror("expressão não pode ser passada por referência no parametro número %d do procedimento '%s'",
+                            param_desloc, proc->nome);
+                        YYERROR;
+                    }
 
                     if (param->params.tipo != e) {
                         yyerror("parametro número %d do procedimento '%s' não aceita tipo '%s'",
