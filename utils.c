@@ -138,3 +138,7 @@ int pilha_peek(pilha_t *p) {
 void pilha_limpa(pilha_t *p) {
     p->it = 0;
 }
+
+int pilha_tamanho(pilha_t *p) {
+    return p->it;
+}

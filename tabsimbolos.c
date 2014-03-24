@@ -41,7 +41,9 @@ void imprime_ts(tab_simbolos_t *ts) {
         }
         else if (ts->simbolos[i].cat == CAT_PARAM) {
             fprintf(stderr, "desloc=%d, ", ts->simbolos[i].params.desloc);
-            fprintf(stderr, "tipo=%s", TIPO_STR(ts->simbolos[i].params.tipo));
+            fprintf(stderr, "tipo=%s, ", TIPO_STR(ts->simbolos[i].params.tipo));
+            fprintf(stderr, "by=%s, ", BY_STR(ts->simbolos[i].params.by));
+            fprintf(stderr, "proc=%s", ts->simbolos[i].params.proc->nome);
         }
 
         fprintf(stderr, "}\n");
@@ -114,20 +116,54 @@ void define_desloc_params_ts(tab_simbolos_t *ts) {
 #endif
 }
 
-simbolo_t *busca_ts(tab_simbolos_t *ts, char *nome, categorias_simb cat, unsigned int nivel_lexico) {
+simbolo_t *busca_var_ts(tab_simbolos_t *ts, char *nome, unsigned int nivel_lexico) {
 #ifdef DEBUG_TS
-    fprintf(stderr, "busca_ts(%s, %d, %d)\n", nome, cat, nivel_lexico);
+    fprintf(stderr, "busca_var_ts(%s, %d)\n", nome, nivel_lexico);
 #endif
 
     for (int i = (ts->it-1); i >= 0; i--) {
-        if ( ((ts->simbolos[i].cat & cat) != 0) &&
-             (ts->simbolos[i].nivel_lexico <= nivel_lexico) &&
-             (strncmp(ts->simbolos[i].nome, nome, TAM_TOKEN) == 0) ) {
+        if (ts->simbolos[i].nivel_lexico != nivel_lexico)
+            continue;
+
+        if (ts->simbolos[i].cat == CAT_PROC) {
+            nivel_lexico--;
+            continue;
+        }
+
+        if (strncmp(ts->simbolos[i].nome, nome, TAM_TOKEN) == 0) {
             return &ts->simbolos[i];
         }
     }
 
     return NULL;
+}
+
+int busca_indice_proc_ts(tab_simbolos_t *ts, char *nome, unsigned int nivel_lexico) {
+#ifdef DEBUG_TS
+    fprintf(stderr, "busca_indice_proc_ts(%s, %d)\n", nome, nivel_lexico);
+#endif
+
+    for (int i = (ts->it-1); i >= 0; i--) {
+        if ( (ts->simbolos[i].cat == CAT_PROC) &&
+             (ts->simbolos[i].nivel_lexico <= nivel_lexico) &&
+             (strncmp(ts->simbolos[i].nome, nome, TAM_TOKEN) == 0) ) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+simbolo_t *busca_por_indice_ts(tab_simbolos_t *ts, int indice) {
+#ifdef DEBUG_TS
+    fprintf(stderr, "busca_por_indice_ts(%d)\n", indice);
+#endif
+
+    if ((indice < 0) || (indice >= ts->it)) {
+        return NULL;
+    }
+
+    return &ts->simbolos[indice];;
 }
 
 unsigned int remove_nivel_ts(tab_simbolos_t *ts, categorias_simb cat, unsigned int nivel_lexico) {

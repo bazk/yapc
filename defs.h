@@ -25,6 +25,16 @@ static inline char *CAT_STR(categorias_simb cat) {
 }
 
 typedef enum {
+    BY_VAR,
+    BY_REF
+} pass_by;
+
+static inline char *BY_STR(pass_by b) {
+    static char *strings[] = {"BY_VAR", "BY_REF"};
+    return strings[b];
+}
+
+typedef enum {
     TIPO_INDEFINIDO = 0,
     TIPO_INTEGER,
     TIPO_BOOLEAN

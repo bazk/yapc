@@ -18,5 +18,6 @@ void pilha_push(pilha_t *p, int i);
 int pilha_pop(pilha_t *p);
 int pilha_peek(pilha_t *p);
 void pilha_limpa(pilha_t *p);
+int pilha_tamanho(pilha_t *p);
 
 #endif

@@ -67,7 +67,7 @@ bloco:          { nivel_lexico++; }
                     geraCodigo(out, label, "NADA");
                 }
                 comando_composto {
-                    remove_nivel_ts(ts, CAT_PROC, nivel_lexico);
+                    remove_nivel_ts(ts, CAT_PROC | CAT_PARAM, nivel_lexico+1);
 
                     unsigned int removidos = remove_nivel_ts(ts, CAT_VS, nivel_lexico);
 
@@ -104,28 +104,32 @@ tipo:           IDENT {
 declara_procs:  declara_proc PONTO_E_VIRGULA declara_procs | %empty;
 
 declara_proc:   PROCEDURE IDENT {
-                    simbolo_t *simb = insere_ts(ts, token.nome, CAT_PROC, nivel_lexico);
-                    sprintf(simb->params.rot, "R%02d", NOVO_ROTULO);
+                    cur_proc = insere_ts(ts, token.nome, CAT_PROC, nivel_lexico+1);
+                    cur_proc->params.num_params = 0;
 
-                    geraCodigo(out, simb->params.rot, "ENPR %d", nivel_lexico+1);
+                    sprintf(cur_proc->params.rot, "R%02d", NOVO_ROTULO);
+                    geraCodigo(out, cur_proc->params.rot, "ENPR %d", nivel_lexico+1);
                 } param_formais {
                     define_desloc_params_ts(ts);
                 } PONTO_E_VIRGULA bloco {
-                    unsigned int removidos = remove_nivel_ts(ts, CAT_PARAM, nivel_lexico+1);
-
-                    geraCodigo(out, NULL, "RTPR %d, %d", nivel_lexico+1, removidos);
+                    geraCodigo(out, NULL, "RTPR %d, %d", nivel_lexico+1,
+                        cur_proc->params.num_params);
                 };
 
 param_formais:  ABRE_PARENTESES lista_params FECHA_PARENTESES | %empty;
 
 lista_params:   lista_params PONTO_E_VIRGULA param | param;
 
-param:          lista_param_vars DOIS_PONTOS param_tipo;
+param:          VAR { passing_by = BY_REF; } lista_param_vars DOIS_PONTOS param_tipo |
+                { passing_by = BY_VAR; } lista_param_vars DOIS_PONTOS param_tipo;
 
 lista_param_vars: param_var VIRGULA lista_param_vars | param_var;
 
 param_var:      IDENT {
-                    insere_ts(ts, token.nome, CAT_PARAM, nivel_lexico+1);
+                    simbolo_t *param = insere_ts(ts, token.nome, CAT_PARAM, nivel_lexico+1);
+                    param->params.by = passing_by;
+                    param->params.proc = cur_proc;
+                    cur_proc->params.num_params++;
                 };
 
 param_tipo:     IDENT {
@@ -154,7 +158,7 @@ atr_ou_chamada: ATRIBUICAO atribuicao |
                 chamada_de_procedimento;
 
 atribuicao:     expressao {
-                    simbolo_t *l_elem = busca_ts(ts, l_token, CAT_VS | CAT_PARAM, nivel_lexico);
+                    simbolo_t *l_elem = busca_var_ts(ts, l_token, nivel_lexico);
                     tipos_var e = (tipos_var) pilha_pop(E);
 
                     if (l_elem == NULL) {
@@ -168,7 +172,10 @@ atribuicao:     expressao {
                         YYERROR;
                     }
 
-                    geraCodigo(out, NULL, "ARMZ %d, %d", l_elem->nivel_lexico, l_elem->params.desloc);
+                    if ((l_elem->cat == CAT_PARAM) && (l_elem->params.by == BY_REF))
+                        geraCodigo(out, NULL, "ARMI %d, %d", l_elem->nivel_lexico, l_elem->params.desloc);
+                    else
+                        geraCodigo(out, NULL, "ARMZ %d, %d", l_elem->nivel_lexico, l_elem->params.desloc);
                 }
 
 expressao:      expressao_simples RELACAO { pilha_push(R, rel); } expressao_simples {
@@ -239,15 +246,53 @@ termo:          termo OPERADOR_CONJ { pilha_push(O, op); } fator {
 
 fator:          ABRE_PARENTESES expressao { pilha_push(F, pilha_pop(E)); } FECHA_PARENTESES |
                 IDENT {
-                    simbolo_t *simb = busca_ts(ts, token.nome, CAT_VS | CAT_PARAM, nivel_lexico);
+                    simbolo_t *simb = busca_var_ts(ts, token.nome, nivel_lexico);
 
                     if (simb == NULL) {
                         yyerror("variável '%s' não foi definida", token.nome);
                         YYERROR;
                     }
 
+                    if (pilha_tamanho(pilha_cham_proc) > 0) {
+                        if ((simb->cat == CAT_PARAM) && (simb->params.by == BY_REF)) {
+                            geraCodigo(out, NULL, "CRVL %d, %d", simb->nivel_lexico, simb->params.desloc);
+                        }
+                        else {
+                            int param_desloc = pilha_pop(pilha_cham_proc);
+                            int proc_id = pilha_pop(pilha_cham_proc);
+
+                            simbolo_t *proc = busca_por_indice_ts(ts, proc_id);
+
+                            if (proc == NULL) {
+                                yyerror("erro interno (procedure not found by id)");
+                                YYERROR;
+                            }
+
+                            simbolo_t *param = busca_por_indice_ts(ts, proc_id + param_desloc);
+
+                            if ((param == NULL) || param->cat != CAT_PARAM) {
+                                yyerror("procedimento '%s' aceita %d parâmetros, foram passados %d",
+                                    proc->nome, proc->params.num_params, param_desloc);
+                                YYERROR;
+                            }
+
+                            if (param->params.by == BY_REF)
+                                geraCodigo(out, NULL, "CREN %d, %d", simb->nivel_lexico, simb->params.desloc);
+                            else
+                                geraCodigo(out, NULL, "CRVL %d, %d", simb->nivel_lexico, simb->params.desloc);
+
+                            pilha_push(pilha_cham_proc, proc_id);
+                            pilha_push(pilha_cham_proc, param_desloc);
+                        }
+                    }
+                    else {
+                        if ((simb->cat == CAT_PARAM) && (simb->params.by == BY_REF))
+                            geraCodigo(out, NULL, "CRVI %d, %d", simb->nivel_lexico, simb->params.desloc);
+                        else
+                            geraCodigo(out, NULL, "CRVL %d, %d", simb->nivel_lexico, simb->params.desloc);
+                    }
+
                     pilha_push(F, simb->params.tipo);
-                    geraCodigo(out, NULL, "CRVL %d, %d", simb->nivel_lexico, simb->params.desloc);
                 } |
                 NUMERO {
                     pilha_push(F, TIPO_INTEGER);
@@ -294,7 +339,7 @@ lista_variaveis_read:
                 lista_variaveis_read VIRGULA variavel_read | variavel_read;
 
 variavel_read:  IDENT {
-                    simbolo_t *simb = busca_ts(ts, token.nome, CAT_VS | CAT_PARAM, nivel_lexico);
+                    simbolo_t *simb = busca_var_ts(ts, token.nome, nivel_lexico);
 
                     if (simb == NULL) {
                         yyerror("variável '%s' não foi definida", token.nome);
@@ -310,12 +355,31 @@ variavel_read:  IDENT {
                     geraCodigo(out, NULL, "ARMZ %d, %d", simb->nivel_lexico, simb->params.desloc);
                 };
 
-chamada_de_procedimento:
+chamada_de_procedimento: {
+                    int proc_id = busca_indice_proc_ts(ts, l_token, nivel_lexico+1);
+
+                    if (proc_id < 0) {
+                        yyerror("procedimento '%s' não foi definido", l_token);
+                        YYERROR;
+                    }
+
+                    pilha_push(pilha_cham_proc, proc_id);
+                    pilha_push(pilha_cham_proc, 1);
+                }
                 lista_parametros {
-                    simbolo_t *proc = busca_ts(ts, l_token, CAT_PROC, nivel_lexico);
+                    int param_desloc = pilha_pop(pilha_cham_proc);
+                    int proc_id = pilha_pop(pilha_cham_proc);
+
+                    simbolo_t *proc = busca_por_indice_ts(ts, proc_id);
 
                     if (proc == NULL) {
-                        yyerror("procedimento '%s' não foi definido", l_token);
+                        yyerror("erro interno (procedure not found by id)");
+                        YYERROR;
+                    }
+
+                    if (proc->params.num_params != (param_desloc-1)) {
+                        yyerror("procedimento '%s' aceita %d parâmetros, foram passados %d",
+                            proc->nome, proc->params.num_params, param_desloc-1);
                         YYERROR;
                     }
 
@@ -323,13 +387,48 @@ chamada_de_procedimento:
                 };
 
 lista_parametros:
-                ABRE_PARENTESES lista_expressoes FECHA_PARENTESES |
+                ABRE_PARENTESES lista_exp_proc FECHA_PARENTESES |
                 ABRE_PARENTESES FECHA_PARENTESES |
                  %empty;
 
-lista_expressoes: lista_expressoes VIRGULA expressao_proc | expressao_proc;
+lista_exp_proc:  lista_exp_proc VIRGULA expressao_proc | expressao_proc;
 
-expressao_proc: expressao { pilha_pop(E); };
+expressao_proc: expressao {
+                    tipos_var e = (tipos_var) pilha_pop(E);
+                    int param_desloc = pilha_pop(pilha_cham_proc);
+                    int proc_id = pilha_pop(pilha_cham_proc);
+
+                    simbolo_t *proc = busca_por_indice_ts(ts, proc_id);
+
+                    if (proc == NULL) {
+                        yyerror("erro interno (procedure not found by id)");
+                        YYERROR;
+                    }
+
+                    simbolo_t *param = busca_por_indice_ts(ts, proc_id + param_desloc);
+
+                    if ((param == NULL) || param->cat != CAT_PARAM) {
+                        yyerror("procedimento '%s' aceita %d parâmetros, foram passados %d",
+                            proc->nome, proc->params.num_params, param_desloc);
+                        YYERROR;
+                    }
+
+                    // TODO: verify if passed a single variable by ref
+                    // if (param->params.by != BY_VAR) {
+                    //     yyerror("parametro número %d do procedimento '%s' deve ser passado por referência",
+                    //         param_desloc, proc->nome);
+                    //     YYERROR;
+                    // }
+
+                    if (param->params.tipo != e) {
+                        yyerror("parametro número %d do procedimento '%s' não aceita tipo '%s'",
+                            param_desloc, proc->nome, TIPO_STR(e));
+                        YYERROR;
+                    }
+
+                    pilha_push(pilha_cham_proc, proc_id);
+                    pilha_push(pilha_cham_proc, param_desloc+1);
+                };
 
 comando_repetitivo:
                 WHILE {
@@ -440,6 +539,7 @@ int main(int argc, char* argv[]) {
     pilha_rot_jump = pilha_inicializa();
     pilha_rot_loop = pilha_inicializa();
     pilha_rot_cond = pilha_inicializa();
+    pilha_cham_proc = pilha_inicializa();
 
     err = yyparse();
 
@@ -452,6 +552,7 @@ int main(int argc, char* argv[]) {
     pilha_destroi(pilha_rot_jump);
     pilha_destroi(pilha_rot_loop);
     pilha_destroi(pilha_rot_cond);
+    pilha_destroi(pilha_cham_proc);
 
     destroi_ts(ts);
 
