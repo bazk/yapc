@@ -7,19 +7,23 @@
 
 typedef enum {
     CAT_VS = 1,
-    CAT_PROC = 2,
-    CAT_PARAM = 4
+    CAT_PF = 2,
+    CAT_PROC = 4,
+    CAT_FUNC = 8
 } categorias_simb;
 
 static inline char *CAT_STR(categorias_simb cat) {
     if ((cat & CAT_VS) != 0)
         return "VS";
 
+    if ((cat & CAT_PF) != 0)
+        return "PF";
+
     if ((cat & CAT_PROC) != 0)
         return "PROC";
 
-    if ((cat & CAT_PARAM) != 0)
-        return "PARAM";
+    if ((cat & CAT_FUNC) != 0)
+        return "FUNC";
 
     return "?";
 }
@@ -43,6 +47,18 @@ typedef enum {
 static inline char *TIPO_STR(tipos_var o) {
     static char *strings[] = {"?", "integer", "boolean"};
     return strings[o];
+}
+
+static inline tipos_var TIPO_FROM_STR(char *s) {
+    if (strncmp(s, "integer", TAM_TOKEN) == 0) {
+        return  TIPO_INTEGER;
+    }
+
+    if (strncmp(s, "boolean", TAM_TOKEN) == 0) {
+        return TIPO_BOOLEAN;
+    }
+
+    return TIPO_INDEFINIDO;
 }
 
 typedef enum {

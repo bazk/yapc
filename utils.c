@@ -15,7 +15,7 @@ void yyerror(const char *s, ...) {
     FILE *fp;
     char buf[256];
     va_list args;
-    unsigned int count = 1;
+    int count = 1;
 
     va_start(args, s);
 
@@ -48,7 +48,7 @@ void yywarning(const char *s, ...) {
     FILE *fp;
     char buf[256];
     va_list args;
-    unsigned int count = 1;
+    int count = 1;
 
     va_start(args, s);
 

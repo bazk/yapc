@@ -5,7 +5,7 @@
 #include "compilador.tab.h"
 #include "compilador.h"
 
-unsigned int line = 1, column = 1;
+int line = 1, column = 1;
 
 #define YY_USER_ACTION \
      token.nome = yytext; \
@@ -41,6 +41,8 @@ program { return PROGRAM; }
 var { return VAR; }
 
 procedure { return PROCEDURE; }
+
+function { return FUNCTION; }
 
 begin { return T_BEGIN; }
 

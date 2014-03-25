@@ -4,7 +4,7 @@
 #include "defs.h"
 
 typedef struct {
-    unsigned int it;
+    int it;
     int *items;
 } pilha_t;
 

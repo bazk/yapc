@@ -22,12 +22,10 @@ void destroi_ts(tab_simbolos_t *ts) {
 }
 
 void imprime_ts(tab_simbolos_t *ts) {
-    unsigned int i;
-
     fprintf(stderr, "================================================================================\n");
-    fprintf(stderr, "NOME    CAT     NL      PARAMS\n");
-    for (i=0; i<ts->it; i++) {
-        fprintf(stderr, "%s\t%s\t%d\t", ts->simbolos[i].nome, CAT_STR(ts->simbolos[i].cat),
+    fprintf(stderr, "ID NOME CAT     NL      PARAMS\n");
+    for (int i=0; i<ts->it; i++) {
+        fprintf(stderr, "%2d %s\t%s\t%d\t", ts->simbolos[i].idx, ts->simbolos[i].nome, CAT_STR(ts->simbolos[i].cat),
             ts->simbolos[i].nivel_lexico);
 
         fprintf(stderr, "{");
@@ -36,14 +34,35 @@ void imprime_ts(tab_simbolos_t *ts) {
             fprintf(stderr, "desloc=%d, ", ts->simbolos[i].params.desloc);
             fprintf(stderr, "tipo=%s", TIPO_STR(ts->simbolos[i].params.tipo));
         }
-        else if (ts->simbolos[i].cat == CAT_PROC) {
-            fprintf(stderr, "rot=%s", ts->simbolos[i].params.rot);
-        }
-        else if (ts->simbolos[i].cat == CAT_PARAM) {
+        else if (ts->simbolos[i].cat == CAT_PF) {
             fprintf(stderr, "desloc=%d, ", ts->simbolos[i].params.desloc);
             fprintf(stderr, "tipo=%s, ", TIPO_STR(ts->simbolos[i].params.tipo));
-            fprintf(stderr, "by=%s, ", BY_STR(ts->simbolos[i].params.by));
-            fprintf(stderr, "proc=%s", ts->simbolos[i].params.proc->nome);
+            fprintf(stderr, "by=%s", BY_STR(ts->simbolos[i].params.by));
+        }
+        else if (ts->simbolos[i].cat == CAT_PROC) {
+            fprintf(stderr, "rot=%s, ", ts->simbolos[i].params.rot);
+            fprintf(stderr, "num_params=%d", ts->simbolos[i].params.num_params);
+        }
+        else if (ts->simbolos[i].cat == CAT_FUNC) {
+            fprintf(stderr, "desloc=%d, ", ts->simbolos[i].params.desloc);
+            fprintf(stderr, "tipo=%s, ", TIPO_STR(ts->simbolos[i].params.tipo));
+            fprintf(stderr, "rot=%s, ", ts->simbolos[i].params.rot);
+            fprintf(stderr, "num_params=%d", ts->simbolos[i].params.num_params);
+        }
+
+        if ((ts->simbolos[i].cat == CAT_PROC) || (ts->simbolos[i].cat == CAT_FUNC)) {
+            fprintf(stderr, ", params=[ ");
+            if (ts->simbolos[i].params.signature == NULL) {
+                fprintf(stderr, "NULL ");
+            }
+            else {
+                for (int j=0; j<ts->simbolos[i].params.num_params; j++) {
+                    if (ts->simbolos[i].params.signature[j].by == BY_REF)
+                        fprintf(stderr, "&");
+                    fprintf(stderr, "%s ", TIPO_STR(ts->simbolos[i].params.signature[j].tipo));
+                }
+            }
+            fprintf(stderr, "]");
         }
 
         fprintf(stderr, "}\n");
@@ -51,7 +70,8 @@ void imprime_ts(tab_simbolos_t *ts) {
     fprintf(stderr, "================================================================================\n\n");
 }
 
-simbolo_t *insere_ts(tab_simbolos_t *ts, char *nome, categorias_simb cat, unsigned int nivel_lexico) {
+simbolo_t *insere_ts(tab_simbolos_t *ts, char *nome, categorias_simb cat, int nivel_lexico) {
+    ts->simbolos[ts->it].idx = ts->it;
     strncpy(ts->simbolos[ts->it].nome, nome, TAM_TOKEN);
     ts->simbolos[ts->it].cat = cat;
     ts->simbolos[ts->it].nivel_lexico = nivel_lexico;
@@ -72,42 +92,31 @@ simbolo_t *insere_ts(tab_simbolos_t *ts, char *nome, categorias_simb cat, unsign
     return &ts->simbolos[ts->it-1];
 }
 
-int define_tipo_ts(tab_simbolos_t *ts, char *token_tipo, categorias_simb cat) {
-    tipos_var tipo;
-    int i = (ts->it-1);
+void define_tipo_ts(tab_simbolos_t *ts, tipos_var tipo, categorias_simb cat) {
+#ifdef DEBUG_TS
+    fprintf(stderr, "define_tipo_ts(%s, %s)\n", TIPO_STR(tipo), CAT_STR(cat));
+#endif
 
-    if (strncmp(token_tipo, "integer", TAM_TOKEN) == 0) {
-        tipo = TIPO_INTEGER;
-    }
-    else if (strncmp(token_tipo, "boolean", TAM_TOKEN) == 0) {
-        tipo = TIPO_BOOLEAN;
-    }
-    else {
-        return 1;
-    }
-
-    while ((i >= 0) && (ts->simbolos[i].params.tipo == TIPO_INDEFINIDO)) {
-        if (ts->simbolos[i].cat != cat)
-            break;
-
-        ts->simbolos[i].params.tipo = tipo;
-        i--;
+    for (int i = (ts->it-1); i >= 0; i--) {
+        if ((ts->simbolos[i].params.tipo == TIPO_INDEFINIDO) &&
+            ((ts->simbolos[i].cat & cat) != 0))
+            ts->simbolos[i].params.tipo = tipo;
     }
 
 #ifdef DEBUG_TS
-    fprintf(stderr, "define_tipo_ts(%s, %s)\n", token_tipo, CAT_STR(cat));
     imprime_ts(ts);
 #endif
-
-    return 0;
 }
 
 void define_desloc_params_ts(tab_simbolos_t *ts) {
-    int i = (ts->it-1), j = 0;
+    int j = 0;
 
-    while ((i >= 0) && (ts->simbolos[i].cat == CAT_PARAM)) {
+    for (int i = (ts->it-1); i >= 0; i--) {
+        if ( (ts->simbolos[i].cat != CAT_PF) &&
+             (ts->simbolos[i].cat != CAT_FUNC) )
+            break;
+
         ts->simbolos[i].params.desloc = -4 - j++;
-        i--;
     }
 
 #ifdef DEBUG_TS
@@ -116,21 +125,19 @@ void define_desloc_params_ts(tab_simbolos_t *ts) {
 #endif
 }
 
-simbolo_t *busca_var_ts(tab_simbolos_t *ts, char *nome, unsigned int nivel_lexico) {
+simbolo_t *busca_ts(tab_simbolos_t *ts, char *nome, categorias_simb cat, int nivel_lexico) {
 #ifdef DEBUG_TS
-    fprintf(stderr, "busca_var_ts(%s, %d)\n", nome, nivel_lexico);
+    fprintf(stderr, "busca_ts(%s, %d, %d)\n", nome, cat, nivel_lexico);
 #endif
 
     for (int i = (ts->it-1); i >= 0; i--) {
-        if (ts->simbolos[i].nivel_lexico != nivel_lexico)
-            continue;
-
-        if (ts->simbolos[i].cat == CAT_PROC) {
-            nivel_lexico--;
-            continue;
+        if (ts->simbolos[i].nivel_lexico > nivel_lexico) {
+            yywarning("simbolo com nivel lexico maior do que o informado na busca");
+            break;
         }
 
-        if (strncmp(ts->simbolos[i].nome, nome, TAM_TOKEN) == 0) {
+        if (((ts->simbolos[i].cat & cat) != 0) &&
+            (strncmp(ts->simbolos[i].nome, nome, TAM_TOKEN) == 0)) {
             return &ts->simbolos[i];
         }
     }
@@ -138,46 +145,31 @@ simbolo_t *busca_var_ts(tab_simbolos_t *ts, char *nome, unsigned int nivel_lexic
     return NULL;
 }
 
-int busca_indice_proc_ts(tab_simbolos_t *ts, char *nome, unsigned int nivel_lexico) {
+simbolo_t *busca_por_idx_ts(tab_simbolos_t *ts, int idx) {
 #ifdef DEBUG_TS
-    fprintf(stderr, "busca_indice_proc_ts(%s, %d)\n", nome, nivel_lexico);
+    fprintf(stderr, "busca_por_idx_ts(%d)\n", idx);
 #endif
 
-    for (int i = (ts->it-1); i >= 0; i--) {
-        if ( (ts->simbolos[i].cat == CAT_PROC) &&
-             (ts->simbolos[i].nivel_lexico <= nivel_lexico) &&
-             (strncmp(ts->simbolos[i].nome, nome, TAM_TOKEN) == 0) ) {
-            return i;
-        }
-    }
-
-    return -1;
-}
-
-simbolo_t *busca_por_indice_ts(tab_simbolos_t *ts, int indice) {
-#ifdef DEBUG_TS
-    fprintf(stderr, "busca_por_indice_ts(%d)\n", indice);
-#endif
-
-    if ((indice < 0) || (indice >= ts->it)) {
+    if ((idx < 0) || (idx >= ts->it)) {
+        yywarning("busca_por_idx_ts chamado com idx inválido");
         return NULL;
     }
 
-    return &ts->simbolos[indice];;
+    return &ts->simbolos[idx];;
 }
 
-unsigned int remove_nivel_ts(tab_simbolos_t *ts, categorias_simb cat, unsigned int nivel_lexico) {
-    int i = (ts->it-1), count = 0;
+int remove_nivel_ts(tab_simbolos_t *ts, categorias_simb cat, int nivel_lexico) {
+    int count = 0;
 
-    while ((i >= 0) && (ts->simbolos[i].nivel_lexico >= nivel_lexico)) {
-        if ((ts->simbolos[i].cat & cat) == 0)
+    for (int i = (ts->it-1); i >= 0; i--) {
+        if ((ts->simbolos[i].nivel_lexico < nivel_lexico) ||
+            ((ts->simbolos[i].cat & cat) == 0))
             break;
 
         count++;
-        i--;
     }
 
-    ts->it = ++i;
+    ts->it -= count;
 
 #ifdef DEBUG_TS
     fprintf(stderr, "remove_nivel_ts(%d, %d)\n", cat, nivel_lexico);
