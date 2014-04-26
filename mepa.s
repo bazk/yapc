@@ -143,8 +143,8 @@
    imul $4, %eax
    movl $\j, %edi
    movl D(,%edi,4), %ebx
-   subl %ebx, %eax
-   movl %eax, %esp
+   subl %eax, %ebx
+   movl %ebx, %esp
 .endm
 
 # -----------------------------------------------------------------
