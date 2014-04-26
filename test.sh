@@ -68,7 +68,7 @@ function dotest() {
     fi
 
     if [ -f "tests/${test/.pas/.mepa}" ]; then
-        if ! diff MEPA tests/${test/.pas/.mepa} >${outdir}/${test}.mepa.diff; then
+        if ! diff -Z MEPA tests/${test/.pas/.mepa} >${outdir}/${test}.mepa.diff; then
             fail
             echo "error: mepa differs:"
             cat ${outdir}/${test}.mepa.diff
