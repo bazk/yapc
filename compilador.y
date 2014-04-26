@@ -221,6 +221,8 @@ atribuicao:     expressao {
 
                     if ((l_elem->cat == CAT_PF) && (l_elem->params.by == BY_REF))
                         geraCodigo(out, NULL, "ARMI %d, %d", l_elem->nivel_lexico, l_elem->params.desloc);
+                    else if (l_elem->cat == CAT_FUNC)
+                        geraCodigo(out, NULL, "ARMZ %d, %d", l_elem->nivel_lexico+1, l_elem->params.desloc);
                     else
                         geraCodigo(out, NULL, "ARMZ %d, %d", l_elem->nivel_lexico, l_elem->params.desloc);
                 }
@@ -321,7 +323,7 @@ var_ou_func:    {
                     }
 
                     if (simb->cat == CAT_FUNC) {
-                        geraCodigo(out, NULL, "CRCT 0"); // for the return value
+                        geraCodigo(out, NULL, "AMEM 1"); // for the return value
                     }
 
                     pilha_push(pilha_cham_proc, simb->idx);
@@ -438,7 +440,13 @@ variavel_read:  IDENT {
                     }
 
                     geraCodigo(out, NULL, "LEIT");
-                    geraCodigo(out, NULL, "ARMZ %d, %d", simb->nivel_lexico, simb->params.desloc);
+
+                    if ((simb->cat == CAT_PF) && (simb->params.by == BY_REF))
+                        geraCodigo(out, NULL, "ARMI %d, %d", simb->nivel_lexico, simb->params.desloc);
+                    else if (simb->cat == CAT_FUNC)
+                        geraCodigo(out, NULL, "ARMZ %d, %d", simb->nivel_lexico+1, simb->params.desloc);
+                    else
+                        geraCodigo(out, NULL, "ARMZ %d, %d", simb->nivel_lexico, simb->params.desloc);
                 };
 
 chamada_de_procedimento: {
