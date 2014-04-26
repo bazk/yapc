@@ -38,6 +38,8 @@ comentario "(*".*"*)"
 
 program { return PROGRAM; }
 
+label { return LABEL; }
+
 var { return VAR; }
 
 procedure { return PROCEDURE; }
@@ -65,6 +67,8 @@ else { return ELSE; }
 write { return WRITE; }
 
 read { return READ; }
+
+goto { return GOTO; }
 
 := { return ATRIBUICAO; }
 

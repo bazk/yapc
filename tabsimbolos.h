@@ -18,8 +18,10 @@ typedef struct {
     // CAT_PF
     pass_by by;
 
-    // CAT_PROC || CAT_FUNC
+    // CAT_PROC || CAT_FUNC || CAT_LABEL
     char rot[4];
+
+    // CAT_PROC || CAT_FUNC
     int num_params;
     param_def_t *signature;
 } params_t;
@@ -50,6 +52,8 @@ void define_desloc_params_ts(tab_simbolos_t *ts);
 simbolo_t *busca_ts(tab_simbolos_t *ts, char *nome, categorias_simb cat, int nivel_lexico);
 simbolo_t *busca_por_idx_ts(tab_simbolos_t *ts, int idx);
 
-int remove_nivel_ts(tab_simbolos_t *ts, categorias_simb cat, int nivel_lexico);
+void remove_nivel_ts(tab_simbolos_t *ts, int nivel_lexico);
+
+int count_ts(tab_simbolos_t *ts, categorias_simb cat, int nivel_lexico);
 
 #endif

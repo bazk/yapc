@@ -9,7 +9,8 @@ typedef enum {
     CAT_VS = 1,
     CAT_PF = 2,
     CAT_PROC = 4,
-    CAT_FUNC = 8
+    CAT_FUNC = 8,
+    CAT_LABEL = 16
 } categorias_simb;
 
 static inline char *CAT_STR(categorias_simb cat) {
@@ -24,6 +25,9 @@ static inline char *CAT_STR(categorias_simb cat) {
 
     if ((cat & CAT_FUNC) != 0)
         return "FUNC";
+
+    if ((cat & CAT_LABEL) != 0)
+        return "LABEL";
 
     return "?";
 }

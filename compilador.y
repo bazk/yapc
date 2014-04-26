@@ -38,6 +38,7 @@ extern int yylex();
 %token WHILE DO
 %token IF THEN ELSE
 %token READ WRITE
+%token LABEL GOTO
 
 %precedence LOWER_THAN_ELSE
 %precedence ELSE
@@ -54,6 +55,7 @@ lista_idents:   lista_idents VIRGULA IDENT |
                 IDENT;
 
 bloco:          { nivel_lexico++; }
+                parte_declara_labels
                 parte_declara_vars
                 {
                     int rot = NOVO_ROTULO;
@@ -67,18 +69,38 @@ bloco:          { nivel_lexico++; }
                     geraCodigo(out, label, "NADA");
                 }
                 comando_composto {
-                    remove_nivel_ts(ts, CAT_PROC | CAT_FUNC, nivel_lexico);
+                    int num_vars_locais = count_ts(ts, CAT_VS, nivel_lexico);
 
-                    int removidos = remove_nivel_ts(ts, CAT_VS, nivel_lexico);
-
-                    if (removidos > 0) {
-                        geraCodigo(out, NULL, "DMEM %d", removidos);
+                    if (num_vars_locais > 0) {
+                        geraCodigo(out, NULL, "DMEM %d", num_vars_locais);
                     }
 
-                    remove_nivel_ts(ts, CAT_PF, nivel_lexico);
+                    remove_nivel_ts(ts, nivel_lexico);
 
                     nivel_lexico--;
                 };
+
+parte_declara_labels: LABEL declara_labels PONTO_E_VIRGULA | %empty;
+
+declara_labels: declara_label VIRGULA declara_labels | declara_label;
+
+declara_label:  label {
+                    simbolo_t *label = insere_ts(ts, token.nome, CAT_LABEL, nivel_lexico);
+                    sprintf(label->params.rot, "R%02d", NOVO_ROTULO);
+                };
+
+goto:           GOTO label {
+                    simbolo_t *label = busca_ts(ts, token.nome, CAT_LABEL, nivel_lexico);
+
+                    if (label == NULL) {
+                        yyerror("erro: '%s' rótulo não foi declarado", token.nome);
+                        YYERROR;
+                    }
+
+                    geraCodigo(out, NULL, "DSVR %s, %d, %d", label->params.rot, label->nivel_lexico, nivel_lexico);
+                };
+
+label:          IDENT | NUMERO;
 
 parte_declara_vars: VAR { desloc_counter = 0; } declara_vars | %empty;
 
@@ -150,8 +172,6 @@ declara_param_formais: param_formais {
                         cur_proc->params.signature[i].tipo = p->params.tipo;
                         cur_proc->params.signature[i].by = p->params.by;
                     }
-
-                    imprime_ts(ts);
                 }
 
 param_formais:  ABRE_PARENTESES lista_params FECHA_PARENTESES | %empty;
@@ -188,7 +208,16 @@ comando_composto: T_BEGIN comandos T_END;
 
 comandos:       comandos PONTO_E_VIRGULA comando | comando;
 
-comando:        NUMERO DOIS_PONTOS comando_sem_rotulo | comando_sem_rotulo;
+comando:        NUMERO {
+                    simbolo_t *label = busca_ts(ts, token.nome, CAT_LABEL, nivel_lexico);
+
+                    if (label == NULL) {
+                        yyerror("erro: '%s' rótulo não foi declarado", token.nome);
+                        YYERROR;
+                    }
+
+                    geraCodigo(out, label->params.rot, "ENRT %d, %d", nivel_lexico, count_ts(ts, CAT_VS, nivel_lexico));
+                } DOIS_PONTOS comando_sem_rotulo | comando_sem_rotulo;
 
 comando_sem_rotulo:
                 comando_composto |
@@ -196,6 +225,7 @@ comando_sem_rotulo:
                 comando_condicional |
                 write |
                 read |
+                goto |
                 left_elem |
                 %empty;
 
@@ -355,34 +385,37 @@ var_ou_func:    {
                         }
 
                         if (pilha_tamanho(pilha_cham_proc) > 0) {
-                            if ((simb->cat == CAT_PF) && (simb->params.by == BY_REF)) {
-                                geraCodigo(out, NULL, "CRVL %d, %d", simb->nivel_lexico, simb->params.desloc);
+                            int param_id = pilha_pop(pilha_cham_proc);
+                            int proc_id = pilha_pop(pilha_cham_proc);
+
+                            simbolo_t *proc = busca_por_idx_ts(ts, proc_id);
+
+                            if (proc == NULL) {
+                                yyerror("erro interno: procedure not found by id");
+                                YYERROR;
+                            }
+
+                            if (param_id >= proc->params.num_params) {
+                                yyerror("o procedimento/função '%s' aceita %d parâmetros, foram passados %d",
+                                    proc->nome, proc->params.num_params, param_id);
+                                YYERROR;
+                            }
+
+                            if (proc->params.signature[param_id].by == BY_REF) {
+                                if ((simb->cat == CAT_PF) && (simb->params.by == BY_REF))
+                                    geraCodigo(out, NULL, "CRVL %d, %d", simb->nivel_lexico, simb->params.desloc);
+                                else
+                                    geraCodigo(out, NULL, "CREN %d, %d", simb->nivel_lexico, simb->params.desloc);
                             }
                             else {
-                                int param_id = pilha_pop(pilha_cham_proc);
-                                int proc_id = pilha_pop(pilha_cham_proc);
-
-                                simbolo_t *proc = busca_por_idx_ts(ts, proc_id);
-
-                                if (proc == NULL) {
-                                    yyerror("erro interno: procedure not found by id");
-                                    YYERROR;
-                                }
-
-                                if (param_id >= proc->params.num_params) {
-                                    yyerror("o procedimento/função '%s' aceita %d parâmetros, foram passados %d",
-                                        proc->nome, proc->params.num_params, param_id);
-                                    YYERROR;
-                                }
-
-                                if (proc->params.signature[param_id].by == BY_REF)
-                                    geraCodigo(out, NULL, "CREN %d, %d", simb->nivel_lexico, simb->params.desloc);
+                                if ((simb->cat == CAT_PF) && (simb->params.by == BY_REF))
+                                    geraCodigo(out, NULL, "CRVI %d, %d", simb->nivel_lexico, simb->params.desloc);
                                 else
                                     geraCodigo(out, NULL, "CRVL %d, %d", simb->nivel_lexico, simb->params.desloc);
-
-                                pilha_push(pilha_cham_proc, proc_id);
-                                pilha_push(pilha_cham_proc, param_id);
                             }
+
+                            pilha_push(pilha_cham_proc, proc_id);
+                            pilha_push(pilha_cham_proc, param_id);
                         }
                         else {
                             if ((simb->cat == CAT_PF) && (simb->params.by == BY_REF))

@@ -49,6 +49,9 @@ void imprime_ts(tab_simbolos_t *ts) {
             fprintf(stderr, "rot=%s, ", ts->simbolos[i].params.rot);
             fprintf(stderr, "num_params=%d", ts->simbolos[i].params.num_params);
         }
+        else if (ts->simbolos[i].cat == CAT_LABEL) {
+            fprintf(stderr, "rot=%s", ts->simbolos[i].params.rot);
+        }
 
         if ((ts->simbolos[i].cat == CAT_PROC) || (ts->simbolos[i].cat == CAT_FUNC)) {
             fprintf(stderr, ", params=[ ");
@@ -158,21 +161,33 @@ simbolo_t *busca_por_idx_ts(tab_simbolos_t *ts, int idx) {
     return &ts->simbolos[idx];;
 }
 
-int remove_nivel_ts(tab_simbolos_t *ts, categorias_simb cat, int nivel_lexico) {
+void remove_nivel_ts(tab_simbolos_t *ts, int nivel_lexico) {
+    for (int i = (ts->it-1); i >= 0; i--) {
+        if (ts->simbolos[i].nivel_lexico < nivel_lexico)
+            break;
+
+        ts->it--;
+    }
+
+#ifdef DEBUG_TS
+    fprintf(stderr, "remove_nivel_ts(%d)\n", nivel_lexico);
+    imprime_ts(ts);
+#endif
+}
+
+int count_ts(tab_simbolos_t *ts, categorias_simb cat, int nivel_lexico) {
     int count = 0;
 
     for (int i = (ts->it-1); i >= 0; i--) {
-        if ((ts->simbolos[i].nivel_lexico < nivel_lexico) ||
-            ((ts->simbolos[i].cat & cat) == 0))
+        if (ts->simbolos[i].nivel_lexico < nivel_lexico)
             break;
 
-        count++;
+        if ((ts->simbolos[i].cat & cat) != 0)
+            count++;
     }
 
-    ts->it -= count;
-
 #ifdef DEBUG_TS
-    fprintf(stderr, "remove_nivel_ts(%d, %d)\n", cat, nivel_lexico);
+    fprintf(stderr, "count_ts(%d, %d)\n", cat, nivel_lexico);
     imprime_ts(ts);
 #endif
 
