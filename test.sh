@@ -1,9 +1,33 @@
 #!/bin/bash
 
 stop_on_fail=0
-if [ "$1" == "--stop-on-fail" -o "$1" == "-f" ]; then
-    stop_on_fail=1
-fi
+clean_make=0
+
+while [ $# -ge 1 ]; do
+    case "$1" in
+        --stop-on-fail)
+            stop_on_fail=1
+            break
+            ;;
+        -f)
+            stop_on_fail=1
+            break
+            ;;
+        --clean)
+            clean_make=1
+            break
+            ;;
+        -c)
+            clean_make=1
+            break
+            ;;
+        *)
+            echo "warning: ignoring unknown option '$1'" >&2
+            ;;
+    esac
+
+    shift
+done
 
 outdir="/tmp/yapc-test"
 mkdir -p ${outdir}
@@ -38,7 +62,7 @@ function dotest() {
     if grep "read" tests/${test} >/dev/null; then
         if [ ! -f tests/${test/.pas/.in} ]; then
             fail
-            echo "error: missing input file"
+            echo "error: missing input file" >&2
             return 1
         fi
 
@@ -51,7 +75,7 @@ function dotest() {
     if echo ${test} | egrep "^[0-9]+-fail" >/dev/null; then
         if [ ${ret} -eq 0 ]; then
             fail
-            echo "error: compiling did not failed as it was supposed to"
+            echo "error: compiling did not failed as it was supposed to" >&2
             return 1
         else
             success
@@ -61,7 +85,7 @@ function dotest() {
 
     if [ ${ret} -ne 0 ]; then
         fail
-        echo "error: compiling failed with return code = ${ret}"
+        echo "error: compiling failed with return code = ${ret}" >&2
         cat ${outdir}/${test}.compile-out
         echo
         return 1
@@ -70,7 +94,7 @@ function dotest() {
     if [ -f "tests/${test/.pas/.mepa}" ]; then
         if ! diff -Z MEPA tests/${test/.pas/.mepa} >${outdir}/${test}.mepa.diff; then
             fail
-            echo "error: mepa differs:"
+            echo "error: mepa differs:" >&2
             cat ${outdir}/${test}.mepa.diff
             echo
             return 2
@@ -82,7 +106,7 @@ function dotest() {
 
     if [ ${ret} -ne 0 ]; then
         fail
-        echo "error: execution failed"
+        echo "error: execution failed" >&2
         cat ${outdir}/${test}.err
         echo
         return 1
@@ -91,7 +115,7 @@ function dotest() {
     if [ -f "tests/${test/.pas/.out}" ]; then
         if ! diff ${outdir}/${test}.out tests/${test/.pas/.out} >${outdir}/${test}.out.diff; then
             fail
-            echo "error: stdout differs:"
+            echo "error: stdout differs:" >&2
             cat ${outdir}/${test}.out.diff
             echo
             return 3
@@ -102,12 +126,14 @@ function dotest() {
     return 0
 }
 
+test $clean_make -eq 1 && make clean >/dev/null
 make
 ret=$?
 if [ $ret -ne 0 ]; then
-    echo "error: failure at building the compiler"
+    echo "error: failure at building the compiler" >&2
     exit $ret
 fi
+echo
 
 begin=$(date +%s)
 count=0
