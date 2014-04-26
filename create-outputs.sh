@@ -22,16 +22,22 @@ function dotest() {
     test=$1
     echo -n "creating output for ${test}..."
 
-    ./yapc-to-fpc.py tests/${test} > ${outdir}/${test}
-
-    fpc ${outdir}/${test} >${outdir}/${test}.fpc-out 2>&1
-    ret=$?
+    if [ -f "tests/${test/.pas/.fpc-incompatible}" ] || [ -f "tests/${test/.pas/.no-gen-output}" ]; then
+        # no output necessary
+        success
+        return 0
+    fi
 
     if echo ${test} | egrep "^[0-9]+-fail" >/dev/null; then
         # no output necessary
         success
         return 0
     fi
+
+    ./yapc-to-fpc.py tests/${test} > ${outdir}/${test}
+
+    fpc ${outdir}/${test} >${outdir}/${test}.fpc-out 2>&1
+    ret=$?
 
     if [ ${ret} -ne 0 ]; then
         fail
