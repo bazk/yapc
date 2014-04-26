@@ -22,7 +22,7 @@ function dotest() {
     test=$1
     echo -n "creating output for ${test}..."
 
-    ./yapc-to-fpc.sh tests/${test} > ${outdir}/${test}
+    ./yapc-to-fpc.py tests/${test} > ${outdir}/${test}
 
     fpc ${outdir}/${test} >${outdir}/${test}.fpc-out 2>&1
     ret=$?
