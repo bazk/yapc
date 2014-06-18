@@ -25,8 +25,6 @@ int rotcounter = 0;
 extern int yylex();
 %}
 
-%define parse.error verbose
-
 %token PROGRAM ABRE_PARENTESES FECHA_PARENTESES
 %token VIRGULA PONTO_E_VIRGULA DOIS_PONTOS PONTO
 %token T_BEGIN T_END VAR IDENT ATRIBUICAO
@@ -40,8 +38,6 @@ extern int yylex();
 %token READ WRITE
 %token LABEL GOTO
 
-%precedence LOWER_THAN_ELSE
-%precedence ELSE
 
 %%
 
@@ -80,7 +76,7 @@ bloco:          { nivel_lexico++; }
                     nivel_lexico--;
                 };
 
-parte_declara_labels: LABEL declara_labels PONTO_E_VIRGULA | %empty;
+parte_declara_labels: LABEL declara_labels PONTO_E_VIRGULA | ;
 
 declara_labels: declara_label VIRGULA declara_labels | declara_label;
 
@@ -102,7 +98,7 @@ goto:           GOTO label {
 
 label:          IDENT | NUMERO;
 
-parte_declara_vars: VAR { desloc_counter = 0; } declara_vars | %empty;
+parte_declara_vars: VAR { desloc_counter = 0; } declara_vars | ;
 
 declara_vars:   declara_var declara_vars | declara_var;
 
@@ -129,7 +125,7 @@ tipo:           IDENT {
                     define_tipo_ts(ts, tipo, CAT_VS);
                 };
 
-declara_funcs_procs: declara_func_proc PONTO_E_VIRGULA declara_funcs_procs | %empty;
+declara_funcs_procs: declara_func_proc PONTO_E_VIRGULA declara_funcs_procs | ;
 
 declara_func_proc: declara_func | declara_proc;
 
@@ -174,7 +170,7 @@ declara_param_formais: param_formais {
                     }
                 }
 
-param_formais:  ABRE_PARENTESES lista_params FECHA_PARENTESES | %empty;
+param_formais:  ABRE_PARENTESES lista_params FECHA_PARENTESES | ;
 
 lista_params:   lista_params PONTO_E_VIRGULA param | param;
 
@@ -200,7 +196,7 @@ param_tipo:     IDENT {
                     define_tipo_ts(ts, tipo, CAT_PF);
                 };
 
-fim_proc_func:  %empty {
+fim_proc_func:   {
                     geraCodigo(out, NULL, "RTPR %d, %d", nivel_lexico+1, cur_proc->params.num_params);
                 }
 
@@ -227,7 +223,7 @@ comando_sem_rotulo:
                 read |
                 goto |
                 left_elem |
-                %empty;
+                ;
 
 left_elem:      IDENT { strncpy(l_token, token.nome, TAM_TOKEN); } atr_ou_chamada;
 
@@ -433,7 +429,7 @@ write:          WRITE lista_parametros_write;
 lista_parametros_write:
                 ABRE_PARENTESES lista_expressoes_write FECHA_PARENTESES |
                 ABRE_PARENTESES FECHA_PARENTESES |
-                %empty;
+                ;
 
 lista_expressoes_write:
                 lista_expressoes_write VIRGULA expressao_write | expressao_write;
@@ -454,7 +450,7 @@ read:           READ lista_parametros_read;
 lista_parametros_read:
                 ABRE_PARENTESES lista_variaveis_read FECHA_PARENTESES |
                 ABRE_PARENTESES FECHA_PARENTESES |
-                %empty;
+                ;
 
 lista_variaveis_read:
                 lista_variaveis_read VIRGULA variavel_read | variavel_read;
@@ -516,7 +512,7 @@ chamada_de_procedimento: {
 lista_parametros:
                 ABRE_PARENTESES lista_exp_proc FECHA_PARENTESES |
                 ABRE_PARENTESES FECHA_PARENTESES |
-                 %empty;
+                 ;
 
 lista_exp_proc:  lista_exp_proc VIRGULA expressao_proc | expressao_proc;
 
@@ -621,7 +617,7 @@ if_then:        IF expressao {
                 };
 
 else:           ELSE comando_sem_rotulo |
-                %prec LOWER_THAN_ELSE %empty;
+                 ;
 
 %%
 

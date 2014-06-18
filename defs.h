@@ -2,8 +2,8 @@
 #define _DEFS_H_
 
 #define TAM_TOKEN 16
-#define TS_CHUNK_SIZE 2
-#define PILHA_CHUNK_SIZE 2
+#define TS_CHUNK_SIZE 32
+#define PILHA_CHUNK_SIZE 16
 
 typedef enum {
     CAT_VS = 1,
